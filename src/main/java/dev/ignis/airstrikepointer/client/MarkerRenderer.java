@@ -31,6 +31,35 @@ public class MarkerRenderer {
     @SuppressWarnings("removal")
     private static final ResourceLocation PATH_TEXTURE = new ResourceLocation(AirstrikePointers.MODID, "textures/marker/path.png");
 
+    // 自定义RenderType：无深度测试（穿墙显示）
+    private static final RenderType MARKER_RENDER_TYPE = createMarkerRenderType(POINT_TEXTURE);
+    private static final RenderType PATH_RENDER_TYPE = createMarkerRenderType(PATH_TEXTURE);
+
+    private static RenderType createMarkerRenderType(ResourceLocation texture) {
+        return RenderType.create(
+                "airstrike_marker",
+                DefaultVertexFormat.NEW_ENTITY,
+                VertexFormat.Mode.QUADS,
+                256,
+                false,
+                true,
+                RenderType.CompositeState.builder()
+                        .setShaderState(new net.minecraft.client.renderer.RenderStateShard.ShaderStateShard(
+                                net.minecraft.client.renderer.GameRenderer::getRendertypeEntityTranslucentShader))
+                        .setTextureState(new net.minecraft.client.renderer.RenderStateShard.TextureStateShard(texture, false, false))
+                        .setTransparencyState(new net.minecraft.client.renderer.RenderStateShard.TransparencyStateShard(
+                                "translucent_transparency", () -> {
+                                    RenderSystem.enableBlend();
+                                    RenderSystem.defaultBlendFunc();
+                                }, RenderSystem::disableBlend))
+                        .setDepthTestState(new net.minecraft.client.renderer.RenderStateShard.DepthTestStateShard("always", 519))
+                        .setCullState(new net.minecraft.client.renderer.RenderStateShard.CullStateShard(false))
+                        .setLightmapState(new net.minecraft.client.renderer.RenderStateShard.LightmapStateShard(true))
+                        .setOverlayState(new net.minecraft.client.renderer.RenderStateShard.OverlayStateShard(true))
+                        .createCompositeState(false)
+        );
+    }
+
     private static final Map<UUID, ClientPointMarker> pointMarkers = new HashMap<>();
     private static final Map<UUID, ClientPathMarker> pathMarkers = new HashMap<>();
 
@@ -142,7 +171,7 @@ public class MarkerRenderer {
         poseStack.mulPose(mc.getEntityRenderDispatcher().cameraOrientation());
         poseStack.scale(scale, scale, scale);
 
-        VertexConsumer vertexConsumer = bufferSource.getBuffer(RenderType.entityTranslucent(POINT_TEXTURE));
+        VertexConsumer vertexConsumer = bufferSource.getBuffer(MARKER_RENDER_TYPE);
         PoseStack.Pose pose = poseStack.last();
 
         // 绘制面片
@@ -204,7 +233,7 @@ public class MarkerRenderer {
         float angle = (float) Math.atan2(norm.z, norm.x);
         poseStack.mulPose(new Quaternionf().rotateY(-angle + (float) Math.PI / 2));
 
-        VertexConsumer vertexConsumer = bufferSource.getBuffer(RenderType.entityTranslucent(PATH_TEXTURE));
+        VertexConsumer vertexConsumer = bufferSource.getBuffer(PATH_RENDER_TYPE);
         PoseStack.Pose pose = poseStack.last();
 
         // 翻页动画偏移
