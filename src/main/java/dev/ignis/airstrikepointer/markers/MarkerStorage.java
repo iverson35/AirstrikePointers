@@ -281,8 +281,8 @@ public class MarkerStorage extends SavedData {
         // 使用原始JSON格式发送带悬浮提示的消息
         // 格式: [队名]玩家名 标记了一个位置
         // 悬浮提示放在队名+玩家名组合上
-        String prefixText = teamPrefix.isEmpty() ? "" : "[" + teamPrefix + "]";
-        String fullName = prefixText + playerName;
+        // teamPrefix 已经包含方括号，如 "[TeamName]"
+        String fullName = teamPrefix.isEmpty() ? playerName : teamPrefix + playerName;
 
         String message = String.format("[{\"text\":\"%s\",\"color\":\"%s\",\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"%s\"}},{\"text\":\" 标记了一个位置\",\"color\":\"white\"}]",
                 fullName.replace("\"", "\\\""), hexColor, hoverText.replace("\"", "\\\""));
