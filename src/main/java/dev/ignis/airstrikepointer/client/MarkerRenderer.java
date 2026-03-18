@@ -127,9 +127,8 @@ public class MarkerRenderer {
         float distanceFactor = (float) Math.min(1.0, Math.max(0.0, (distance - minDistance) / (maxDistance - minDistance)));
         float scale = minScale + (maxScale - minScale) * distanceFactor;
 
-        float floatOffset = (float) Math.sin((marker.age + mc.getFrameTime()) * 0.1) * 0.1f;
         float x = (float) marker.position.x;
-        float y = (float) (marker.position.y + 1.5 + floatOffset);
+        float y = (float) (marker.position.y + 0.5);
         float z = (float) marker.position.z;
 
         float r = ((marker.color >> 16) & 0xFF) / 255f;
