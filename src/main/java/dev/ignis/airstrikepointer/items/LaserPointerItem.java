@@ -89,11 +89,13 @@ public class LaserPointerItem extends Item {
 
             Vec3 targetPos;
             int targetType;
+            String entityName = "";
 
             if (entityHitResult != null) {
                 // 命中实体
                 targetPos = entityHitResult.getLocation();
                 targetType = UsePointerPacket.TARGET_ENTITY;
+                entityName = entityHitResult.getEntity().getDisplayName().getString();
             } else {
                 // 检测方块
                 HitResult blockHitResult = player.pick(100.0, 0.0f, false);
@@ -106,7 +108,7 @@ public class LaserPointerItem extends Item {
                 }
             }
 
-            NetworkHandler.CHANNEL.sendToServer(new UsePointerPacket(targetPos.x, targetPos.y, targetPos.z, targetType));
+            NetworkHandler.CHANNEL.sendToServer(new UsePointerPacket(targetPos.x, targetPos.y, targetPos.z, targetType, entityName));
         }
 
         return InteractionResultHolder.success(stack);
@@ -118,7 +120,7 @@ public class LaserPointerItem extends Item {
         setMode(stack, nextMode);
     }
 
-    public static void onServerUse(ServerPlayer player, ItemStack stack, HitResult hitResult) {
+    public static void onServerUse(ServerPlayer player, ItemStack stack, HitResult hitResult, String entityName) {
         Mode mode = getMode(stack);
         Level level = player.level();
 
@@ -133,17 +135,25 @@ public class LaserPointerItem extends Item {
         String teamName = getPlayerTeamName(player);
         MarkerStorage storage = MarkerStorage.get(level);
 
+        // 确定目标类型
+        int targetType = CreatePointMarkerPacket.TARGET_MISS;
+        if (hitResult.getType() == HitResult.Type.BLOCK) {
+            targetType = CreatePointMarkerPacket.TARGET_BLOCK;
+        } else if (hitResult.getType() == HitResult.Type.ENTITY) {
+            targetType = CreatePointMarkerPacket.TARGET_ENTITY;
+        }
+
         if (mode == Mode.POINT) {
-            storage.createPointMarker(player.getUUID(), targetPos, color, teamName);
+            storage.createPointMarker(player.getUUID(), targetPos, color, teamName, targetType, entityName, player.getDisplayName().getString());
             player.displayClientMessage(Component.literal("已标记坐标点").withStyle(ChatFormatting.GREEN), true);
         } else if (mode == Mode.PATH) {
             UUID existingPathId = getPathMarkerId(stack);
             if (existingPathId != null) {
-                storage.completePathMarker(existingPathId, targetPos);
+                storage.completePathMarker(existingPathId, targetPos, player.getDisplayName().getString());
                 clearPathMarkerId(stack);
                 player.displayClientMessage(Component.literal("航向路径已创建").withStyle(ChatFormatting.GREEN), true);
             } else {
-                var marker = storage.createPathStart(player.getUUID(), targetPos, color, teamName);
+                var marker = storage.createPathStart(player.getUUID(), targetPos, color, teamName, player.getDisplayName().getString());
                 if (marker != null) {
                     setPathMarkerId(stack, marker.getMarkerId());
                     player.displayClientMessage(Component.literal("已设置起点，再次右键设置终点").withStyle(ChatFormatting.YELLOW), true);

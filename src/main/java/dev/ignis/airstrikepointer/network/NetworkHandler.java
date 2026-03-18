@@ -7,6 +7,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 
 public class NetworkHandler {
     private static final String PROTOCOL_VERSION = "1";
+    @SuppressWarnings("removal")
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             new ResourceLocation(AirstrikePointers.MODID, "main"),
             () -> PROTOCOL_VERSION,

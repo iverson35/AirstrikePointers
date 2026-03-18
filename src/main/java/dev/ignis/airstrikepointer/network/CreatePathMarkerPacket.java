@@ -17,7 +17,8 @@ public record CreatePathMarkerPacket(
         int color,
         String teamName,
         int lifetimeTicks,
-        boolean isPreview
+        boolean isPreview,
+        float headingAngle // 航向角度（度）
 ) {
     public void encode(FriendlyByteBuf buf) {
         buf.writeUUID(markerId);
@@ -36,6 +37,7 @@ public record CreatePathMarkerPacket(
         buf.writeUtf(teamName);
         buf.writeInt(lifetimeTicks);
         buf.writeBoolean(isPreview);
+        buf.writeFloat(headingAngle);
     }
 
     public static CreatePathMarkerPacket decode(FriendlyByteBuf buf) {
@@ -51,7 +53,8 @@ public record CreatePathMarkerPacket(
         String teamName = buf.readUtf();
         int lifetimeTicks = buf.readInt();
         boolean isPreview = buf.readBoolean();
-        return new CreatePathMarkerPacket(markerId, ownerId, startPos, endPos, height, color, teamName, lifetimeTicks, isPreview);
+        float headingAngle = buf.readFloat();
+        return new CreatePathMarkerPacket(markerId, ownerId, startPos, endPos, height, color, teamName, lifetimeTicks, isPreview, headingAngle);
     }
 
     public void handle(Supplier<NetworkEvent.Context> ctx) {

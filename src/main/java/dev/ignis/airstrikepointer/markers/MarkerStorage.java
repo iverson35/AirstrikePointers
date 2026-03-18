@@ -74,7 +74,7 @@ public class MarkerStorage extends SavedData {
         return storage;
     }
 
-    public PointMarker createPointMarker(UUID ownerId, Vec3 position, int color, String teamName) {
+    public PointMarker createPointMarker(UUID ownerId, Vec3 position, int color, String teamName, int targetType, String entityName, String playerName) {
         if (getPlayerMarkerCount(ownerId) >= Config.MAX_MARKERS_PER_PLAYER.get()) {
             return null;
         }
@@ -86,11 +86,12 @@ public class MarkerStorage extends SavedData {
         incrementPlayerCount(ownerId);
         setDirty();
 
-        broadcastToAll(new CreatePointMarkerPacket(markerId, ownerId, position, color, teamName, lifetimeTicks));
+        broadcastToAll(new CreatePointMarkerPacket(markerId, ownerId, position, color, teamName, lifetimeTicks, targetType, entityName));
+        broadcastMarkerNotification(marker, playerName, targetType, entityName);
         return marker;
     }
 
-    public PathMarker createPathStart(UUID ownerId, Vec3 startPos, int color, String teamName) {
+    public PathMarker createPathStart(UUID ownerId, Vec3 startPos, int color, String teamName, String playerName) {
         if (getPlayerMarkerCount(ownerId) >= Config.MAX_MARKERS_PER_PLAYER.get()) {
             return null;
         }
@@ -102,17 +103,24 @@ public class MarkerStorage extends SavedData {
         incrementPlayerCount(ownerId);
         setDirty();
 
-        broadcastToAll(new CreatePathMarkerPacket(markerId, ownerId, startPos, null, (float) startPos.y, color, teamName, lifetimeTicks, true));
+        broadcastToAll(new CreatePathMarkerPacket(markerId, ownerId, startPos, null, (float) startPos.y, color, teamName, lifetimeTicks, true, 0));
         return marker;
     }
 
-    public void completePathMarker(UUID markerId, Vec3 endPos) {
+    public void completePathMarker(UUID markerId, Vec3 endPos, String playerName) {
         PathMarker marker = pathMarkers.get(markerId);
         if (marker != null) {
             marker.setEndPos(endPos);
             setDirty();
+
+            // 计算航向角度
+            Vec3 dir = endPos.subtract(marker.getStartPos());
+            float angle = (float) Math.toDegrees(Math.atan2(dir.z, dir.x));
+            if (angle < 0) angle += 360;
+
             broadcastToAll(new CreatePathMarkerPacket(markerId, marker.getOwnerId(), marker.getStartPos(), endPos,
-                    marker.getHeight(), marker.getColor(), marker.getTeamName(), marker.getRemainingTicks(), false));
+                    marker.getHeight(), marker.getColor(), marker.getTeamName(), marker.getRemainingTicks(), false, angle));
+            broadcastPathNotification(marker, playerName, angle);
         }
     }
 
@@ -209,6 +217,77 @@ public class MarkerStorage extends SavedData {
                 NetworkHandler.CHANNEL.sendTo(packet, player.connection.connection, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT);
             }
         }
+    }
+
+    private void broadcastMarkerNotification(PointMarker marker, String playerName, int targetType, String entityName) {
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server == null) return;
+
+        // 构建颜色代码
+        String hexColor = String.format("#%06X", marker.getColor() & 0xFFFFFF);
+        String teamPrefix = marker.getTeamName().isEmpty() ? "" : "[" + marker.getTeamName() + "]";
+
+        // 构建悬浮提示内容
+        String hoverText;
+        if (targetType == CreatePointMarkerPacket.TARGET_ENTITY && !entityName.isEmpty()) {
+            hoverText = "实体: " + entityName;
+        } else {
+            Vec3 pos = marker.getPosition();
+            hoverText = String.format("[%.1f, %.1f, %.1f]", pos.x, pos.y, pos.z);
+        }
+
+        // 发送给所有玩家
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (shouldPlayerSeeMarker(player, marker.getOwnerId(), marker.getTeamName())) {
+                sendMarkerMessage(player, hexColor, teamPrefix, playerName, hoverText);
+            }
+        }
+    }
+
+    private void broadcastPathNotification(PathMarker marker, String playerName, float headingAngle) {
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server == null) return;
+
+        String hexColor = String.format("#%06X", marker.getColor() & 0xFFFFFF);
+        String teamPrefix = marker.getTeamName().isEmpty() ? "" : "[" + marker.getTeamName() + "]";
+
+        Vec3 start = marker.getStartPos();
+        Vec3 end = marker.getEndPos();
+        String hoverText = String.format("[%.1f, %.1f, %.1f] -> [%.1f, %.1f, %.1f] 航向%.0f°",
+                start.x, start.y, start.z, end.x, end.y, end.z, headingAngle);
+
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (shouldPlayerSeeMarker(player, marker.getOwnerId(), marker.getTeamName())) {
+                sendMarkerMessage(player, hexColor, teamPrefix, playerName, hoverText);
+            }
+        }
+    }
+
+    private boolean shouldPlayerSeeMarker(ServerPlayer player, UUID ownerId, String markerTeamName) {
+        if (ownerId.equals(player.getUUID())) return true;
+        if (!Config.SHOW_ONLY_MY_TEAM.get()) return true;
+
+        var localTeam = player.getTeam();
+        if (localTeam == null) return true;
+
+        if (markerTeamName == null || markerTeamName.isEmpty()) {
+            return Config.SHOW_UNTEAM_MARKERS.get();
+        }
+
+        return localTeam.getName().equals(markerTeamName);
+    }
+
+    private void sendMarkerMessage(ServerPlayer player, String hexColor, String teamPrefix, String playerName, String hoverText) {
+        // 使用原始JSON格式发送带悬浮提示的消息
+        // 格式: [队名]玩家名 标记了一个位置
+        // 悬浮提示放在队名+玩家名组合上
+        String prefixText = teamPrefix.isEmpty() ? "" : "[" + teamPrefix + "]";
+        String fullName = prefixText + playerName;
+
+        String message = String.format("[{\"text\":\"%s\",\"color\":\"%s\",\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"%s\"}},{\"text\":\" 标记了一个位置\",\"color\":\"white\"}]",
+                fullName.replace("\"", "\\\""), hexColor, hoverText.replace("\"", "\\\""));
+
+        player.sendSystemMessage(net.minecraft.network.chat.Component.Serializer.fromJson(message));
     }
 
     public Collection<PointMarker> getPointMarkers() {

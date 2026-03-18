@@ -14,8 +14,14 @@ public record CreatePointMarkerPacket(
         Vec3 position,
         int color,
         String teamName,
-        int lifetimeTicks
+        int lifetimeTicks,
+        int targetType, // 0=miss, 1=block, 2=entity
+        String entityName // 当targetType=2时的实体显示名称
 ) {
+    public static final int TARGET_MISS = 0;
+    public static final int TARGET_BLOCK = 1;
+    public static final int TARGET_ENTITY = 2;
+
     public void encode(FriendlyByteBuf buf) {
         buf.writeUUID(markerId);
         buf.writeUUID(ownerId);
@@ -25,6 +31,8 @@ public record CreatePointMarkerPacket(
         buf.writeInt(color);
         buf.writeUtf(teamName);
         buf.writeInt(lifetimeTicks);
+        buf.writeInt(targetType);
+        buf.writeUtf(entityName != null ? entityName : "");
     }
 
     public static CreatePointMarkerPacket decode(FriendlyByteBuf buf) {
@@ -34,7 +42,9 @@ public record CreatePointMarkerPacket(
                 new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble()),
                 buf.readInt(),
                 buf.readUtf(),
-                buf.readInt()
+                buf.readInt(),
+                buf.readInt(),
+                buf.readUtf()
         );
     }
 

@@ -11,7 +11,7 @@ import net.minecraftforge.network.NetworkEvent;
 
 import java.util.function.Supplier;
 
-public record UsePointerPacket(double targetX, double targetY, double targetZ, int targetType) {
+public record UsePointerPacket(double targetX, double targetY, double targetZ, int targetType, String entityName) {
     public static final int TARGET_BLOCK = 0;
     public static final int TARGET_ENTITY = 1;
     public static final int TARGET_MISS = 2;
@@ -21,10 +21,11 @@ public record UsePointerPacket(double targetX, double targetY, double targetZ, i
         buf.writeDouble(targetY);
         buf.writeDouble(targetZ);
         buf.writeInt(targetType);
+        buf.writeUtf(entityName != null ? entityName : "");
     }
 
     public static UsePointerPacket decode(FriendlyByteBuf buf) {
-        return new UsePointerPacket(buf.readDouble(), buf.readDouble(), buf.readDouble(), buf.readInt());
+        return new UsePointerPacket(buf.readDouble(), buf.readDouble(), buf.readDouble(), buf.readInt(), buf.readUtf());
     }
 
     public void handle(Supplier<NetworkEvent.Context> ctx) {
@@ -47,7 +48,7 @@ public record UsePointerPacket(double targetX, double targetY, double targetZ, i
                 };
             }
 
-            LaserPointerItem.onServerUse(player, stack, hitResult);
+            LaserPointerItem.onServerUse(player, stack, hitResult, entityName);
         });
         ctx.get().setPacketHandled(true);
     }

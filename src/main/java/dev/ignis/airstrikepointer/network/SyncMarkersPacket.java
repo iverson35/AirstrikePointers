@@ -93,13 +93,14 @@ public record SyncMarkersPacket(
             for (PointMarkerData data : pointMarkers) {
                 MarkerRenderer.addPointMarker(new CreatePointMarkerPacket(
                         data.markerId, data.ownerId, data.position,
-                        data.color, data.teamName, data.remainingTicks
+                        data.color, data.teamName, data.remainingTicks,
+                        CreatePointMarkerPacket.TARGET_BLOCK, ""
                 ));
             }
             for (PathMarkerData data : pathMarkers) {
                 MarkerRenderer.addPathMarker(new CreatePathMarkerPacket(
                         data.markerId, data.ownerId, data.startPos, data.endPos,
-                        data.height, data.color, data.teamName, data.remainingTicks, false
+                        data.height, data.color, data.teamName, data.remainingTicks, false, 0
                 ));
             }
         });
