@@ -1,0 +1,211 @@
+package dev.ignis.airstrikepointer.items;
+
+import dev.ignis.airstrikepointer.markers.MarkerStorage;
+import dev.ignis.airstrikepointer.network.*;
+import net.minecraft.ChatFormatting;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.scores.Team;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.network.PacketDistributor;
+
+import javax.annotation.Nullable;
+import java.util.List;
+import java.util.UUID;
+
+public class LaserPointerItem extends Item {
+    private static final String MODE_KEY = "Mode";
+    private static final String PATH_MARKER_ID_KEY = "PathMarkerId";
+
+    public enum Mode {
+        POINT("坐标点模式", ChatFormatting.GREEN),
+        PATH("航向模式", ChatFormatting.BLUE),
+        CLEAR("清除模式", ChatFormatting.RED);
+
+        private final String displayName;
+        private final ChatFormatting color;
+
+        Mode(String displayName, ChatFormatting color) {
+            this.displayName = displayName;
+            this.color = color;
+        }
+
+        public String getDisplayName() { return displayName; }
+        public ChatFormatting getColor() { return color; }
+
+        public Mode next() {
+            return values()[(ordinal() + 1) % values().length];
+        }
+    }
+
+    public LaserPointerItem(Properties properties) {
+        super(properties);
+    }
+
+    @Override
+    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltipComponents, TooltipFlag isAdvanced) {
+        Mode mode = getMode(stack);
+        tooltipComponents.add(Component.literal("模式: ").append(Component.literal(mode.getDisplayName()).withStyle(mode.getColor())));
+        tooltipComponents.add(Component.literal("Shift+右键切换模式").withStyle(ChatFormatting.GRAY));
+        super.appendHoverText(stack, level, tooltipComponents, isAdvanced);
+    }
+
+    @Override
+    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand usedHand) {
+        ItemStack stack = player.getItemInHand(usedHand);
+
+        if (player.isShiftKeyDown()) {
+            if (level.isClientSide) {
+                NetworkHandler.CHANNEL.sendToServer(new ModeSwitchPacket());
+            }
+            return InteractionResultHolder.success(stack);
+        }
+
+        if (level.isClientSide) {
+            HitResult hitResult = player.pick(100.0, 0.0f, false);
+            int targetType = UsePointerPacket.TARGET_MISS;
+            Vec3 targetPos = hitResult.getLocation();
+
+            if (hitResult.getType() == HitResult.Type.BLOCK) {
+                targetType = UsePointerPacket.TARGET_BLOCK;
+            } else if (hitResult.getType() == HitResult.Type.ENTITY) {
+                targetType = UsePointerPacket.TARGET_ENTITY;
+                targetPos = hitResult.getLocation();
+            } else {
+                Vec3 eyePos = player.getEyePosition(0.0f);
+                Vec3 lookVec = player.getViewVector(0.0f);
+                targetPos = eyePos.add(lookVec.x * 100.0, lookVec.y * 100.0, lookVec.z * 100.0);
+            }
+
+            NetworkHandler.CHANNEL.sendToServer(new UsePointerPacket(targetPos.x, targetPos.y, targetPos.z, targetType));
+        }
+
+        return InteractionResultHolder.success(stack);
+    }
+
+    public static void switchMode(ItemStack stack) {
+        Mode currentMode = getMode(stack);
+        Mode nextMode = currentMode.next();
+        setMode(stack, nextMode);
+    }
+
+    public static void onServerUse(ServerPlayer player, ItemStack stack, HitResult hitResult) {
+        Mode mode = getMode(stack);
+        Level level = player.level();
+
+        if (mode == Mode.CLEAR) {
+            MarkerStorage.get(level).clearMarkersByOwner(player.getUUID());
+            player.displayClientMessage(Component.literal("已清除所有标记").withStyle(ChatFormatting.GREEN), true);
+            return;
+        }
+
+        Vec3 targetPos = hitResult.getLocation();
+        int color = getPlayerColor(player);
+        String teamName = getPlayerTeamName(player);
+        MarkerStorage storage = MarkerStorage.get(level);
+
+        if (mode == Mode.POINT) {
+            storage.createPointMarker(player.getUUID(), targetPos, color, teamName);
+            player.displayClientMessage(Component.literal("已标记坐标点").withStyle(ChatFormatting.GREEN), true);
+        } else if (mode == Mode.PATH) {
+            UUID existingPathId = getPathMarkerId(stack);
+            if (existingPathId != null) {
+                storage.completePathMarker(existingPathId, targetPos);
+                clearPathMarkerId(stack);
+                player.displayClientMessage(Component.literal("航向路径已创建").withStyle(ChatFormatting.GREEN), true);
+            } else {
+                var marker = storage.createPathStart(player.getUUID(), targetPos, color, teamName);
+                if (marker != null) {
+                    setPathMarkerId(stack, marker.getMarkerId());
+                    player.displayClientMessage(Component.literal("已设置起点，再次右键设置终点").withStyle(ChatFormatting.YELLOW), true);
+                } else {
+                    player.displayClientMessage(Component.literal("标记数量已达上限").withStyle(ChatFormatting.RED), true);
+                }
+            }
+        }
+    }
+
+    private static Mode getMode(ItemStack stack) {
+        CompoundTag tag = stack.getOrCreateTag();
+        if (!tag.contains(MODE_KEY)) {
+            return Mode.POINT;
+        }
+        try {
+            return Mode.valueOf(tag.getString(MODE_KEY));
+        } catch (IllegalArgumentException e) {
+            return Mode.POINT;
+        }
+    }
+
+    private static void setMode(ItemStack stack, Mode mode) {
+        stack.getOrCreateTag().putString(MODE_KEY, mode.name());
+    }
+
+    private static UUID getPathMarkerId(ItemStack stack) {
+        CompoundTag tag = stack.getTag();
+        if (tag != null && tag.hasUUID(PATH_MARKER_ID_KEY)) {
+            return tag.getUUID(PATH_MARKER_ID_KEY);
+        }
+        return null;
+    }
+
+    private static void setPathMarkerId(ItemStack stack, UUID markerId) {
+        stack.getOrCreateTag().putUUID(PATH_MARKER_ID_KEY, markerId);
+    }
+
+    private static void clearPathMarkerId(ItemStack stack) {
+        CompoundTag tag = stack.getTag();
+        if (tag != null) {
+            tag.remove(PATH_MARKER_ID_KEY);
+        }
+    }
+
+    private static int getPlayerColor(Player player) {
+        Team team = player.getTeam();
+        if (team != null && team.getColor() != ChatFormatting.RESET) {
+            Integer teamColor = team.getColor().getColor();
+            if (teamColor != null) {
+                return teamColor;
+            }
+        }
+
+        int hash = player.getUUID().hashCode();
+        int r = 64 + (Math.abs(hash) % 192);
+        int g = 64 + (Math.abs(hash >> 8) % 192);
+        int b = 64 + (Math.abs(hash >> 16) % 192);
+        return (r << 16) | (g << 8) | b;
+    }
+
+    private static String getPlayerTeamName(Player player) {
+        Team team = player.getTeam();
+        return team != null ? team.getName() : "";
+    }
+
+    @Override
+    public void inventoryTick(ItemStack stack, Level level, Entity entity, int slotId, boolean isSelected) {
+        if (!level.isClientSide && isSelected && entity instanceof Player player) {
+            UUID pathMarkerId = getPathMarkerId(stack);
+            if (pathMarkerId != null) {
+                MarkerStorage storage = MarkerStorage.get(level);
+                boolean exists = storage.getPathMarker(pathMarkerId) != null;
+                if (!exists) {
+                    clearPathMarkerId(stack);
+                }
+            }
+        }
+        super.inventoryTick(stack, level, entity, slotId, isSelected);
+    }
+}

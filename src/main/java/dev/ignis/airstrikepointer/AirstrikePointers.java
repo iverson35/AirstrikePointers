@@ -1,5 +1,7 @@
 package dev.ignis.airstrikepointer;
 
+import dev.ignis.airstrikepointer.items.ModItems;
+import dev.ignis.airstrikepointer.network.NetworkHandler;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModLoadingContext;
@@ -17,12 +19,16 @@ public class AirstrikePointers {
     public AirstrikePointers() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
 
+        ModItems.register(modEventBus);
+
         modEventBus.addListener(this::commonSetup);
         MinecraftForge.EVENT_BUS.register(this);
 
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, Config.SPEC);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, Config.CLIENT_SPEC);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
+        event.enqueueWork(NetworkHandler::register);
     }
 }
