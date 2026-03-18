@@ -21,6 +21,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
+import org.lwjgl.opengl.GL11;
 
 import java.util.*;
 
@@ -45,7 +46,7 @@ public class MarkerRenderer {
                 true,
                 RenderType.CompositeState.builder()
                         .setShaderState(new net.minecraft.client.renderer.RenderStateShard.ShaderStateShard(
-                                net.minecraft.client.renderer.GameRenderer::getRendertypeEntityTranslucentShader))
+                                net.minecraft.client.renderer.GameRenderer::getRendertypeTextSeeThroughShader))
                         .setTextureState(new net.minecraft.client.renderer.RenderStateShard.TextureStateShard(texture, false, false))
                         .setTransparencyState(new net.minecraft.client.renderer.RenderStateShard.TransparencyStateShard(
                                 "translucent_transparency", () -> {
@@ -56,6 +57,7 @@ public class MarkerRenderer {
                         .setCullState(new net.minecraft.client.renderer.RenderStateShard.CullStateShard(false))
                         .setLightmapState(new net.minecraft.client.renderer.RenderStateShard.LightmapStateShard(true))
                         .setOverlayState(new net.minecraft.client.renderer.RenderStateShard.OverlayStateShard(true))
+                        .setWriteMaskState(new net.minecraft.client.renderer.RenderStateShard.WriteMaskStateShard(true, true))
                         .createCompositeState(false)
         );
     }
