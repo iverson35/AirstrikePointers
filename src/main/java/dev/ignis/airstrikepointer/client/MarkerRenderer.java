@@ -26,7 +26,9 @@ import java.util.*;
 
 @Mod.EventBusSubscriber(modid = AirstrikePointers.MODID, value = Dist.CLIENT)
 public class MarkerRenderer {
+    @SuppressWarnings("removal")
     private static final ResourceLocation POINT_TEXTURE = new ResourceLocation(AirstrikePointers.MODID, "textures/marker/point.png");
+    @SuppressWarnings("removal")
     private static final ResourceLocation PATH_TEXTURE = new ResourceLocation(AirstrikePointers.MODID, "textures/marker/path.png");
 
     private static final Map<UUID, ClientPointMarker> pointMarkers = new HashMap<>();
@@ -97,6 +99,12 @@ public class MarkerRenderer {
 
         MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
 
+        // 渲染路径标记（在点标记之前，避免遮挡）
+        for (ClientPathMarker marker : pathMarkers.values()) {
+            renderPathMarker(poseStack, bufferSource, marker);
+        }
+
+        // 渲染坐标点标记
         for (ClientPointMarker marker : pointMarkers.values()) {
             renderPointMarker(poseStack, bufferSource, marker);
         }
@@ -106,151 +114,112 @@ public class MarkerRenderer {
     }
 
     private static void renderPointMarker(PoseStack poseStack, MultiBufferSource bufferSource, ClientPointMarker marker) {
-        float size = 0.5f;
+        Minecraft mc = Minecraft.getInstance();
+        Vec3 cameraPos = mc.gameRenderer.getMainCamera().getPosition();
+        double distance = marker.position.distanceTo(cameraPos);
 
-        // 现在可以直接使用世界坐标，因为坐标系已经被平移到相机位置
+        // 距离自适应大小：越远越大，但有最小值
+        float minDistance = 32.0f;
+        float maxDistance = 640.0f;
+        float minScale = 1f;
+        float maxScale = 5f;
+
+        float distanceFactor = (float) Math.min(1.0, Math.max(0.0, (distance - minDistance) / (maxDistance - minDistance)));
+        float scale = minScale + (maxScale - minScale) * distanceFactor;
+
+        float floatOffset = (float) Math.sin((marker.age + mc.getFrameTime()) * 0.1) * 0.1f;
         float x = (float) marker.position.x;
-        float y = (float) (marker.position.y + 1.0);
+        float y = (float) (marker.position.y + 1.5 + floatOffset);
         float z = (float) marker.position.z;
 
         float r = ((marker.color >> 16) & 0xFF) / 255f;
         float g = ((marker.color >> 8) & 0xFF) / 255f;
         float b = (marker.color & 0xFF) / 255f;
 
-        VertexConsumer vertexConsumer = bufferSource.getBuffer(RenderType.lines());
-
-        // 绘制立方体线框
-        // 底面
-        line(vertexConsumer, poseStack, x - size, y - size, z - size, x + size, y - size, z - size, r, g, b, 1.0f);
-        line(vertexConsumer, poseStack, x + size, y - size, z - size, x + size, y - size, z + size, r, g, b, 1.0f);
-        line(vertexConsumer, poseStack, x + size, y - size, z + size, x - size, y - size, z + size, r, g, b, 1.0f);
-        line(vertexConsumer, poseStack, x - size, y - size, z + size, x - size, y - size, z - size, r, g, b, 1.0f);
-        // 顶面
-        line(vertexConsumer, poseStack, x - size, y + size, z - size, x + size, y + size, z - size, r, g, b, 1.0f);
-        line(vertexConsumer, poseStack, x + size, y + size, z - size, x + size, y + size, z + size, r, g, b, 1.0f);
-        line(vertexConsumer, poseStack, x + size, y + size, z + size, x - size, y + size, z + size, r, g, b, 1.0f);
-        line(vertexConsumer, poseStack, x - size, y + size, z + size, x - size, y + size, z - size, r, g, b, 1.0f);
-        // 竖直边
-        line(vertexConsumer, poseStack, x - size, y - size, z - size, x - size, y + size, z - size, r, g, b, 1.0f);
-        line(vertexConsumer, poseStack, x + size, y - size, z - size, x + size, y + size, z - size, r, g, b, 1.0f);
-        line(vertexConsumer, poseStack, x + size, y - size, z + size, x + size, y + size, z + size, r, g, b, 1.0f);
-        line(vertexConsumer, poseStack, x - size, y - size, z + size, x - size, y + size, z + size, r, g, b, 1.0f);
-    }
-
-    private static void line(VertexConsumer consumer, PoseStack poseStack, float x1, float y1, float z1, float x2, float y2, float z2, float r, float g, float b, float a) {
-        consumer.vertex(poseStack.last().pose(), x1, y1, z1).color(r, g, b, a).normal(poseStack.last().normal(), 0, 1, 0).endVertex();
-        consumer.vertex(poseStack.last().pose(), x2, y2, z2).color(r, g, b, a).normal(poseStack.last().normal(), 0, 1, 0).endVertex();
-    }
-
-    private static void renderPointMarkerDirect(BufferBuilder buffer, ClientPointMarker marker, Vec3 cameraPos, Matrix4f matrix) {
-        // 使用世界坐标相对于相机的偏移
-        float x = (float) (marker.position.x - cameraPos.x);
-        float y = (float) (marker.position.y - cameraPos.y + 1.0);
-        float z = (float) (marker.position.z - cameraPos.z);
-        float size = 0.5f;
-
-        int r = (marker.color >> 16) & 0xFF;
-        int g = (marker.color >> 8) & 0xFF;
-        int b = marker.color & 0xFF;
-        int a = 255;
-
-        // 线框的12条边
-        // 底面
-        line(buffer, matrix, x - size, y - size, z - size, x + size, y - size, z - size, r, g, b, a);
-        line(buffer, matrix, x + size, y - size, z - size, x + size, y - size, z + size, r, g, b, a);
-        line(buffer, matrix, x + size, y - size, z + size, x - size, y - size, z + size, r, g, b, a);
-        line(buffer, matrix, x - size, y - size, z + size, x - size, y - size, z - size, r, g, b, a);
-        // 顶面
-        line(buffer, matrix, x - size, y + size, z - size, x + size, y + size, z - size, r, g, b, a);
-        line(buffer, matrix, x + size, y + size, z - size, x + size, y + size, z + size, r, g, b, a);
-        line(buffer, matrix, x + size, y + size, z + size, x - size, y + size, z + size, r, g, b, a);
-        line(buffer, matrix, x - size, y + size, z + size, x - size, y + size, z - size, r, g, b, a);
-        // 竖直边
-        line(buffer, matrix, x - size, y - size, z - size, x - size, y + size, z - size, r, g, b, a);
-        line(buffer, matrix, x + size, y - size, z - size, x + size, y + size, z - size, r, g, b, a);
-        line(buffer, matrix, x + size, y - size, z + size, x + size, y + size, z + size, r, g, b, a);
-        line(buffer, matrix, x - size, y - size, z + size, x - size, y + size, z + size, r, g, b, a);
-    }
-
-    private static void line(BufferBuilder buffer, Matrix4f matrix, float x1, float y1, float z1, float x2, float y2, float z2, int r, int g, int b, int a) {
-        buffer.vertex(matrix, x1, y1, z1).color(r, g, b, a).endVertex();
-        buffer.vertex(matrix, x2, y2, z2).color(r, g, b, a).endVertex();
-    }
-
-    private static void renderPointMarker(PoseStack poseStack, ClientPointMarker marker, Vec3 cameraPos) {
-        RenderSystem.setShaderTexture(0, POINT_TEXTURE);
-
-        Vec3 pos = marker.position;
-        float floatOffset = (float) Math.sin((marker.age + Minecraft.getInstance().getFrameTime()) * 0.1) * 0.1f;
-
         poseStack.pushPose();
-        poseStack.translate(pos.x, pos.y + 1.5 + floatOffset, pos.z);
+        poseStack.translate(x, y, z);
 
-        poseStack.mulPose(Minecraft.getInstance().getEntityRenderDispatcher().cameraOrientation());
-        poseStack.scale(0.5f, 0.5f, 0.5f);
+        // Billboard：使面片朝向相机
+        poseStack.mulPose(mc.getEntityRenderDispatcher().cameraOrientation());
+        poseStack.scale(scale, scale, scale);
 
-        Matrix4f matrix = poseStack.last().pose();
-        Tesselator tesselator = Tesselator.getInstance();
-        BufferBuilder buffer = tesselator.getBuilder();
+        VertexConsumer vertexConsumer = bufferSource.getBuffer(RenderType.entityTranslucent(POINT_TEXTURE));
+        PoseStack.Pose pose = poseStack.last();
 
-        int r = (marker.color >> 16) & 0xFF;
-        int g = (marker.color >> 8) & 0xFF;
-        int b = marker.color & 0xFF;
-        int alpha = 200;
-
-        buffer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
-        buffer.vertex(matrix, -1, -1, 0).uv(0, 1).color(r, g, b, alpha).endVertex();
-        buffer.vertex(matrix, 1, -1, 0).uv(1, 1).color(r, g, b, alpha).endVertex();
-        buffer.vertex(matrix, 1, 1, 0).uv(1, 0).color(r, g, b, alpha).endVertex();
-        buffer.vertex(matrix, -1, 1, 0).uv(0, 0).color(r, g, b, alpha).endVertex();
-        tesselator.end();
+        // 绘制面片
+        float alpha = 0.8f;
+        vertex(vertexConsumer, pose, -1, -1, 0, 0, 1, r, g, b, alpha);
+        vertex(vertexConsumer, pose, 1, -1, 0, 1, 1, r, g, b, alpha);
+        vertex(vertexConsumer, pose, 1, 1, 0, 1, 0, r, g, b, alpha);
+        vertex(vertexConsumer, pose, -1, 1, 0, 0, 0, r, g, b, alpha);
 
         poseStack.popPose();
     }
 
-    private static void renderPathMarker(PoseStack poseStack, ClientPathMarker marker, Vec3 cameraPos) {
+    private static void vertex(VertexConsumer consumer, PoseStack.Pose pose, float x, float y, float z, float u, float v, float r, float g, float b, float a) {
+        consumer.vertex(pose.pose(), x, y, z)
+                .color(r, g, b, a)
+                .uv(u, v)
+                .overlayCoords(net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY)
+                .uv2(net.minecraft.client.renderer.LightTexture.FULL_BRIGHT)
+                .normal(pose.normal(), 0, 1, 0)
+                .endVertex();
+    }
+
+    private static void renderPathMarker(PoseStack poseStack, MultiBufferSource bufferSource, ClientPathMarker marker) {
         if (marker.endPos == null) return;
 
-        RenderSystem.setShaderTexture(0, PATH_TEXTURE);
+        Minecraft mc = Minecraft.getInstance();
+        Vec3 cameraPos = mc.gameRenderer.getMainCamera().getPosition();
 
-        // 计算相对于相机的位置
-        double startRx = marker.startPos.x - cameraPos.x;
-        double startRz = marker.startPos.z - cameraPos.z;
-        double endRx = marker.endPos.x - cameraPos.x;
-        double endRz = marker.endPos.z - cameraPos.z;
-        double ry = marker.height - cameraPos.y;
+        // 计算路径中点到相机的距离用于自适应宽度
+        Vec3 midPoint = marker.startPos.add(marker.endPos).scale(0.5);
+        double distance = midPoint.distanceTo(cameraPos);
+
+        // 距离自适应宽度：64m以下5格，64+640m时25格
+        float minDistance = 64.0f;
+        float maxDistance = 704.0f; // 64 + 640
+        float minWidth = 5.0f;
+        float maxWidth = 25.0f;
+
+        float distanceFactor = (float) Math.min(1.0, Math.max(0.0, (distance - minDistance) / (maxDistance - minDistance)));
+        float width = minWidth + (maxWidth - minWidth) * distanceFactor;
+
+        float startX = (float) marker.startPos.x;
+        float startZ = (float) marker.startPos.z;
+        float y = marker.height;
 
         Vec3 dir = marker.endPos.subtract(marker.startPos);
         float length = (float) dir.horizontalDistance();
         if (length < 0.01f) return;
 
-        Vec3 norm = dir.normalize();
-        float angle = (float) Math.atan2(norm.z, norm.x);
+        float r = ((marker.color >> 16) & 0xFF) / 255f;
+        float g = ((marker.color >> 8) & 0xFF) / 255f;
+        float b = (marker.color & 0xFF) / 255f;
 
         poseStack.pushPose();
-        poseStack.translate(startRx, ry, startRz);
+        poseStack.translate(startX, y, startZ);
+
+        // 计算旋转角度，使路径指向终点
+        Vec3 norm = dir.normalize();
+        float angle = (float) Math.atan2(norm.z, norm.x);
         poseStack.mulPose(new Quaternionf().rotateY(-angle + (float) Math.PI / 2));
 
-        Matrix4f matrix = poseStack.last().pose();
-        Tesselator tesselator = Tesselator.getInstance();
-        BufferBuilder buffer = tesselator.getBuilder();
+        VertexConsumer vertexConsumer = bufferSource.getBuffer(RenderType.entityTranslucent(PATH_TEXTURE));
+        PoseStack.Pose pose = poseStack.last();
 
-        int r = (marker.color >> 16) & 0xFF;
-        int g = (marker.color >> 8) & 0xFF;
-        int b = marker.color & 0xFF;
-        int alpha = 180;
+        // 翻页动画偏移
+        float uOffset = -(marker.age % 100) / 100f; // 负号使动画方向正确
+        float alpha = 0.7f;
 
-        float width = 0.5f;
-        float uOffset = (marker.age % 100) / 100f;
+        // 绘制平面路径条带 - 修复UV坐标
+        float u1 = uOffset;
+        float u2 = length * 0.1f + uOffset; // 缩放UV避免过度重复
+        vertex(vertexConsumer, pose, -width, 0.05f, 0, u1, 1, r, g, b, alpha);
+        vertex(vertexConsumer, pose, -width, 0.05f, length, u2, 1, r, g, b, alpha);
+        vertex(vertexConsumer, pose, width, 0.05f, length, u2, 0, r, g, b, alpha);
+        vertex(vertexConsumer, pose, width, 0.05f, 0, u1, 0, r, g, b, alpha);
 
-        buffer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
-
-        buffer.vertex(matrix, -width, 0.05f, 0).uv(0 + uOffset, 1).color(r, g, b, alpha).endVertex();
-        buffer.vertex(matrix, -width, 0.05f, length).uv(length + uOffset, 1).color(r, g, b, alpha).endVertex();
-        buffer.vertex(matrix, width, 0.05f, length).uv(length + uOffset, 0).color(r, g, b, alpha).endVertex();
-        buffer.vertex(matrix, width, 0.05f, 0).uv(0 + uOffset, 0).color(r, g, b, alpha).endVertex();
-
-        tesselator.end();
         poseStack.popPose();
     }
 
