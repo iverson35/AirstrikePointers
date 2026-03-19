@@ -299,7 +299,7 @@ public class MarkerStorage extends SavedData {
         // 格式: [队名]玩家名 标记了一个位置
         // 悬浮提示放在队名+玩家名组合上
         // teamPrefix 已经包含方括号，如 "[TeamName]"
-        String fullName = teamPrefix.isEmpty() ? playerName : teamPrefix + playerName;
+        String fullName = teamPrefix.isEmpty() ? playerName : teamPrefix + " " + playerName;
 
         String markerText = Component.translatable("message.airstrikepointers.marker_notification").getString();
         String message = String.format("[{\"text\":\"%s\",\"color\":\"%s\",\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"%s\"}},{\"text\":\" %s\",\"color\":\"white\"}]",

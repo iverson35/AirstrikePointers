@@ -32,19 +32,19 @@ public class LaserPointerItem extends Item {
     private static final String PATH_MARKER_ID_KEY = "PathMarkerId";
 
     public enum Mode {
-        POINT("坐标点模式", ChatFormatting.GREEN),
-        PATH("航向模式", ChatFormatting.BLUE),
-        CLEAR("清除模式", ChatFormatting.RED);
+        POINT("mode.airstrikepointers.point", ChatFormatting.GREEN),
+        PATH("mode.airstrikepointers.path", ChatFormatting.BLUE),
+        CLEAR("mode.airstrikepointers.clear", ChatFormatting.RED);
 
-        private final String displayName;
+        private final String translationKey;
         private final ChatFormatting color;
 
-        Mode(String displayName, ChatFormatting color) {
-            this.displayName = displayName;
+        Mode(String translationKey, ChatFormatting color) {
+            this.translationKey = translationKey;
             this.color = color;
         }
 
-        public String getDisplayName() { return displayName; }
+        public String getTranslationKey() { return translationKey; }
         public ChatFormatting getColor() { return color; }
 
         public Mode next() {
@@ -94,7 +94,9 @@ public class LaserPointerItem extends Item {
             // Shift+右键直接切换模式
             if (!level.isClientSide) {
                 switchMode(stack);
-                player.displayClientMessage(Component.literal("模式切换为: " + getMode(stack).getDisplayName()).withStyle(getMode(stack).getColor()), true);
+                Mode newMode = getMode(stack);
+                player.displayClientMessage(Component.translatable("message.airstrikepointers.mode_switched",
+                        Component.translatable(newMode.getTranslationKey()).withStyle(newMode.getColor())), true);
             }
             return InteractionResultHolder.success(stack);
         }
@@ -130,7 +132,7 @@ public class LaserPointerItem extends Item {
 
         if (mode == Mode.CLEAR) {
             MarkerStorage.get(level).clearMarkersByOwner(player.getUUID());
-            player.displayClientMessage(Component.literal("已清除所有标记").withStyle(ChatFormatting.GREEN), true);
+            player.displayClientMessage(Component.translatable("message.airstrikepointers.markers_cleared").withStyle(ChatFormatting.GREEN), true);
             return;
         }
 
@@ -169,19 +171,23 @@ public class LaserPointerItem extends Item {
         MarkerStorage storage = MarkerStorage.get(level);
 
         if (mode == Mode.POINT) {
-            storage.createPointMarker(player.getUUID(), targetPos, color, teamName, targetType, entityName, player.getDisplayName().getString());
-            player.displayClientMessage(Component.literal("已标记坐标点").withStyle(ChatFormatting.GREEN), true);
+            var marker = storage.createPointMarker(player.getUUID(), targetPos, color, teamName, targetType, entityName, player.getDisplayName().getString());
+            if (marker != null) {
+                player.displayClientMessage(Component.translatable("message.airstrikepointers.point_marked").withStyle(ChatFormatting.GREEN), true);
+            } else {
+                player.displayClientMessage(Component.translatable("message.airstrikepointers.marker_limit_reached").withStyle(ChatFormatting.RED), true);
+            }
         } else if (mode == Mode.PATH) {
             UUID existingPathId = getPathMarkerId(stack);
             if (existingPathId != null) {
                 storage.completePathMarker(existingPathId, targetPos, player.getDisplayName().getString());
                 clearPathMarkerId(stack);
-                player.displayClientMessage(Component.literal("航向路径已创建").withStyle(ChatFormatting.GREEN), true);
+                player.displayClientMessage(Component.translatable("message.airstrikepointers.path_created").withStyle(ChatFormatting.GREEN), true);
             } else {
                 var marker = storage.createPathStart(player.getUUID(), targetPos, color, teamName, player.getDisplayName().getString());
                 if (marker != null) {
                     setPathMarkerId(stack, marker.getMarkerId());
-                    player.displayClientMessage(Component.literal("已设置起点，长按右键设置终点").withStyle(ChatFormatting.YELLOW), true);
+                    player.displayClientMessage(Component.translatable("message.airstrikepointers.path_start_set").withStyle(ChatFormatting.YELLOW), true);
                     // 向创建者的客户端发送预览包（只在本地显示起点标记）
                     int lifetimeTicks = marker.getRemainingTicks();
                     CreatePathMarkerPacket previewPacket = new CreatePathMarkerPacket(
@@ -189,7 +195,7 @@ public class LaserPointerItem extends Item {
                             (float) targetPos.y, color, teamName, lifetimeTicks, true, 0);
                     NetworkHandler.CHANNEL.sendTo(previewPacket, ((ServerPlayer) player).connection.connection, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT);
                 } else {
-                    player.displayClientMessage(Component.literal("标记数量已达上限").withStyle(ChatFormatting.RED), true);
+                    player.displayClientMessage(Component.translatable("message.airstrikepointers.marker_limit_reached").withStyle(ChatFormatting.RED), true);
                 }
             }
         }
