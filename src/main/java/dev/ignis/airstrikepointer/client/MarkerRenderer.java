@@ -243,8 +243,10 @@ public class MarkerRenderer {
         float alpha = 0.7f;
 
         // 绘制平面路径条带 - 修复UV坐标
+        // 使用固定纹理重复频率，每格一个纹理周期
+        float textureRepeat = 1.0f; // 每格重复一次纹理
         float u1 = uOffset;
-        float u2 = length * 0.1f + uOffset; // 缩放UV避免过度重复
+        float u2 = length * textureRepeat + uOffset;
         vertex(vertexConsumer, pose, -width, 0.05f, 0, u1, 1, r, g, b, alpha);
         vertex(vertexConsumer, pose, -width, 0.05f, length, u2, 1, r, g, b, alpha);
         vertex(vertexConsumer, pose, width, 0.05f, length, u2, 0, r, g, b, alpha);
