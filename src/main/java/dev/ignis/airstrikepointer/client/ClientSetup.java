@@ -38,7 +38,7 @@ public class ClientSetup {
     @SuppressWarnings("removal")
     @SubscribeEvent
     public static void onRegisterAdditionalModels(ModelEvent.RegisterAdditional event) {
-        // 注册手持模型
-        event.register(new ResourceLocation(AirstrikePointers.MODID, "item/laser_pointer_in_hand"));
+        // 注册激光指示器模型
+        event.register(new ResourceLocation(AirstrikePointers.MODID, "item/laser_pointer"));
     }
 }

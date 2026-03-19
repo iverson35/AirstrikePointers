@@ -126,11 +126,11 @@ public class LaserPointerItem extends Item {
         // 检测目标
         Vec3 eyePos = player.getEyePosition(0.0f);
         Vec3 lookVec = player.getViewVector(0.0f);
-        Vec3 endPos = eyePos.add(lookVec.x * 100.0, lookVec.y * 100.0, lookVec.z * 100.0);
+        Vec3 endPos = eyePos.add(lookVec.x * 300.0, lookVec.y * 300.0, lookVec.z * 300.0);
 
         var entityHitResult = net.minecraft.world.entity.projectile.ProjectileUtil.getEntityHitResult(
                 level, player, eyePos, endPos,
-                player.getBoundingBox().expandTowards(lookVec.scale(100.0)).inflate(1.0),
+                player.getBoundingBox().expandTowards(lookVec.scale(300.0)).inflate(1.0),
                 entity -> !entity.isSpectator() && entity.isPickable()
         );
 
@@ -143,7 +143,7 @@ public class LaserPointerItem extends Item {
             targetType = CreatePointMarkerPacket.TARGET_ENTITY;
             entityName = entityHitResult.getEntity().getDisplayName().getString();
         } else {
-            HitResult blockHitResult = player.pick(100.0, 0.0f, false);
+            HitResult blockHitResult = player.pick(300.0, 0.0f, false);
             if (blockHitResult.getType() == HitResult.Type.BLOCK) {
                 targetPos = blockHitResult.getLocation();
                 targetType = CreatePointMarkerPacket.TARGET_BLOCK;

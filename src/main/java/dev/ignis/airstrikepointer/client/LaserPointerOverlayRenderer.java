@@ -5,51 +5,105 @@ import dev.ignis.airstrikepointer.AirstrikePointers;
 import dev.ignis.airstrikepointer.items.ModItems;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Mth;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
+import net.minecraftforge.client.event.RenderHandEvent;
+import net.minecraftforge.client.gui.overlay.NamedGuiOverlay;
+import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(modid = AirstrikePointers.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public class LaserPointerOverlayRenderer {
 
-    // 可以创建一个自定义的覆盖层纹理
-    // 暂时使用简单的十字准星作为示例
+    @SuppressWarnings("removal")
+    // 使用自定义纹理
+    private static final ResourceLocation SCOPE_LOCATION = new ResourceLocation(AirstrikePointers.MODID, "textures/gui/laser_pointer_scope.png");
     
     @SubscribeEvent
     public static void onRenderOverlay(RenderGuiOverlayEvent.Pre event) {
-        Minecraft minecraft = Minecraft.getInstance();
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer player = mc.player;
         
-        // 只有当玩家使用激光指示器时才渲染
-        if (minecraft.player == null || !minecraft.player.isUsingItem()) {
-            return;
+        if (player == null || !player.isUsingItem()) return;
+        
+        if (!player.getUseItem().is(ModItems.LASER_POINTER.get())) return;
+        
+        // 取消原版HUD元素渲染
+        if (isHudOverlay(event.getOverlay())) {
+            event.setCanceled(true);
         }
-        
-        if (!minecraft.player.getUseItem().is(ModItems.LASER_POINTER.get())) {
-            return;
-        }
-        
-        // 渲染简单的十字准星覆盖层
-        renderCrosshair(event.getGuiGraphics(), minecraft.getWindow().getGuiScaledWidth(), 
-                       minecraft.getWindow().getGuiScaledHeight());
     }
     
-    private static void renderCrosshair(GuiGraphics guiGraphics, int screenWidth, int screenHeight) {
-        int centerX = screenWidth / 2;
-        int centerY = screenHeight / 2;
+    @SubscribeEvent
+    public static void onRenderOverlayPost(RenderGuiOverlayEvent.Post event) {
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer player = mc.player;
         
-        // 绘制简单的十字准星
+        if (player == null || !player.isUsingItem()) return;
+        
+        if (!player.getUseItem().is(ModItems.LASER_POINTER.get())) return;
+        
+        // 渲染望远镜覆盖层
+        renderSpyglassOverlay(event.getGuiGraphics());
+    }
+    
+    @SubscribeEvent
+    public static void onRenderHand(RenderHandEvent event) {
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer player = mc.player;
+        
+        if (player == null || !player.isUsingItem()) return;
+        
+        // 隐藏第一人称手部渲染
+        if (player.getUseItem().is(ModItems.LASER_POINTER.get())) {
+            event.setCanceled(true);
+        }
+    }
+    
+    private static boolean isHudOverlay(NamedGuiOverlay overlay) {
+        return overlay.id().equals(VanillaGuiOverlay.HOTBAR.id()) || 
+               overlay.id().equals(VanillaGuiOverlay.PLAYER_HEALTH.id()) || 
+               overlay.id().equals(VanillaGuiOverlay.ARMOR_LEVEL.id()) || 
+               overlay.id().equals(VanillaGuiOverlay.FOOD_LEVEL.id()) || 
+               overlay.id().equals(VanillaGuiOverlay.AIR_LEVEL.id()) || 
+               overlay.id().equals(VanillaGuiOverlay.MOUNT_HEALTH.id()) || 
+               overlay.id().equals(VanillaGuiOverlay.EXPERIENCE_BAR.id()) || 
+               overlay.id().equals(VanillaGuiOverlay.JUMP_BAR.id()) || 
+               overlay.id().equals(VanillaGuiOverlay.ITEM_NAME.id());
+    }
+    
+    private static void renderSpyglassOverlay(GuiGraphics gui) {
+        // 设置渲染状态 - 与原版望远镜一致
         RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.disableDepthTest();
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         
-        // 水平线
-        guiGraphics.fill(centerX - 10, centerY - 1, centerX + 10, centerY + 1, 0xFF00FF00);
-        // 垂直线
-        guiGraphics.fill(centerX - 1, centerY - 10, centerX + 1, centerY + 10, 0xFF00FF00);
+        int screenWidth = gui.guiWidth();
+        int screenHeight = gui.guiHeight();
         
-        // 中心点
-        guiGraphics.fill(centerX - 2, centerY - 2, centerX + 2, centerY + 2, 0xFFFF0000);
+        // 计算正方形区域
+        float size = (float) Math.min(screenWidth, screenHeight);
+        int renderSize = Mth.floor(size);
+        int x = (screenWidth - renderSize) / 2;
+        int y = (screenHeight - renderSize) / 2;
         
-        RenderSystem.disableBlend();
+        // 渲染望远镜纹理（调整透明度以匹配原版效果）
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 0.1F); // 降低整体透明度
+        gui.blit(SCOPE_LOCATION, x, y, -90, 0.0F, 0.0F, renderSize, renderSize, renderSize, renderSize);
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F); // 恢复
+        
+        // 四角黑色遮罩
+        int x2 = x + renderSize;
+        int y2 = y + renderSize;
+        gui.fill(RenderType.guiOverlay(), 0, y2, screenWidth, screenHeight, -90, -16777216);
+        gui.fill(RenderType.guiOverlay(), 0, 0, screenWidth, y, -90, -16777216);
+        gui.fill(RenderType.guiOverlay(), 0, y, x, y2, -90, -16777216);
+        gui.fill(RenderType.guiOverlay(), x2, y, screenWidth, y2, -90, -16777216);
     }
 }
