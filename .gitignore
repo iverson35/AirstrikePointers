@@ -120,3 +120,6 @@ runs/
 /gradle/
 /gradlew
 /gradlew.bat
+
+# Qoder IDE configuration
+.qoder/
