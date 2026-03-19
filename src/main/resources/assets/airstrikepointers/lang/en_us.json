@@ -1,3 +1,15 @@
 {
-  "item.airstrikepointers.laser_pointer": "Laser Pointer"
+  "item.airstrikepointers.laser_pointer": "Laser Pointer",
+  "mode.airstrikepointers.point": "Point Mode",
+  "mode.airstrikepointers.path": "Path Mode",
+  "mode.airstrikepointers.clear": "Clear Mode",
+  "gui.airstrikepointers.path_start": "Start Point",
+  "gui.airstrikepointers.mark_start": "Mark Start",
+  "gui.airstrikepointers.mark_end": "Mark End",
+  "message.airstrikepointers.mode_switched": "Mode switched to: %s",
+  "message.airstrikepointers.point_marked": "Point marked",
+  "message.airstrikepointers.path_created": "Path created",
+  "message.airstrikepointers.path_start_set": "Start point set, hold right click to set end",
+  "message.airstrikepointers.marker_limit_reached": "Marker limit reached",
+  "message.airstrikepointers.markers_cleared": "All markers cleared"
 }

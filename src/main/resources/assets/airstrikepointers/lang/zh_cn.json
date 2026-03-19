@@ -1,3 +1,15 @@
 {
-  "item.airstrikepointers.laser_pointer": "镭射指示器"
+  "item.airstrikepointers.laser_pointer": "镭射指示器",
+  "mode.airstrikepointers.point": "坐标点模式",
+  "mode.airstrikepointers.path": "航向模式",
+  "mode.airstrikepointers.clear": "清除模式",
+  "gui.airstrikepointers.path_start": "起始点",
+  "gui.airstrikepointers.mark_start": "标记起点",
+  "gui.airstrikepointers.mark_end": "标记终点",
+  "message.airstrikepointers.mode_switched": "模式切换为: %s",
+  "message.airstrikepointers.point_marked": "已标记坐标点",
+  "message.airstrikepointers.path_created": "航向路径已创建",
+  "message.airstrikepointers.path_start_set": "已设置起点，长按右键设置终点",
+  "message.airstrikepointers.marker_limit_reached": "标记数量已达上限",
+  "message.airstrikepointers.markers_cleared": "已清除所有标记"
 }

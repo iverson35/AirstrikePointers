@@ -2,16 +2,19 @@ package dev.ignis.airstrikepointer.client;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import dev.ignis.airstrikepointer.AirstrikePointers;
+import dev.ignis.airstrikepointer.items.LaserPointerItem;
 import dev.ignis.airstrikepointer.items.ModItems;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
@@ -182,6 +185,66 @@ public class LaserPointerOverlayRenderer {
         int screenWidth = gui.guiWidth();
         int screenHeight = gui.guiHeight();
         
+        // 准星位置（屏幕中心）
+        int centerX = screenWidth / 2;
+        int centerY = screenHeight / 2;
+        
+        // ===== 左侧：显示模式信息 =====
+        ItemStack stack = player.getUseItem();
+        LaserPointerItem.Mode mode = getLaserPointerMode(stack);
+        
+        // 计算模式文本宽度，用于右对齐
+        String modeKey = switch (mode) {
+            case POINT -> "mode.airstrikepointers.point";
+            case PATH -> "mode.airstrikepointers.path";
+            case CLEAR -> "mode.airstrikepointers.clear";
+        };
+        String modeText = Component.translatable(modeKey).getString();
+        int modeTextWidth = mc.font.width(modeText);
+        
+        // 左侧对称位置（与右侧距离信息对称）
+        int modeX = centerX - 20 - modeTextWidth;
+        int modeY = centerY - 10;
+        
+        // 模式颜色
+        int modeColor = switch (mode) {
+            case POINT -> 0x55FF55; // 绿色
+            case PATH -> 0x5555FF; // 蓝色
+            case CLEAR -> 0xFF5555; // 红色
+        };
+        
+        // 渲染模式名称
+        gui.drawString(mc.font, modeText, modeX, modeY, modeColor);
+        
+        // 路径模式下，根据状态显示不同的提示
+        if (mode == LaserPointerItem.Mode.PATH) {
+            boolean hasStartPoint = hasPathStartPoint(stack);
+            boolean isUsing = player.isUsingItem();
+            
+            String hintKey;
+            int hintColor;
+            
+            if (!hasStartPoint) {
+                // 还没有起点，显示"标记起点"
+                hintKey = "gui.airstrikepointers.mark_start";
+                hintColor = 0x55FF55; // 绿色
+            } else if (isUsing) {
+                // 有起点且正在按住右键，显示"标记终点"
+                hintKey = "gui.airstrikepointers.mark_end";
+                hintColor = 0x55FF55; // 绿色
+            } else {
+                // 有起点但没按住右键，显示"标记起点"（提示可以重新标记起点）
+                hintKey = "gui.airstrikepointers.mark_start";
+                hintColor = 0x55FF55; // 绿色
+            }
+            
+            String hintText = Component.translatable(hintKey).getString();
+            int hintTextWidth = mc.font.width(hintText);
+            int hintX = centerX - 20 - hintTextWidth;
+            gui.drawString(mc.font, hintText, hintX, modeY + 12, hintColor);
+        }
+        
+        // ===== 右侧：显示距离和实体信息 =====
         // 探测距离最大300格
         final double MAX_DISTANCE = 300.0;
         
@@ -215,10 +278,6 @@ public class LaserPointerOverlayRenderer {
         // 计算距离
         double distance = eyePos.distanceTo(targetPos);
         
-        // 准星位置（屏幕中心）
-        int centerX = screenWidth / 2;
-        int centerY = screenHeight / 2;
-        
         // 信息位置：准星右上角偏移
         int infoX = centerX + 20;
         int infoY = centerY - 10;
@@ -232,5 +291,28 @@ public class LaserPointerOverlayRenderer {
             String entityName = targetEntity.getDisplayName().getString();
             gui.drawString(mc.font, entityName, infoX, infoY + 12, 0xFFFF55); // 黄色
         }
+    }
+    
+    private static LaserPointerItem.Mode getLaserPointerMode(ItemStack stack) {
+        if (!stack.is(ModItems.LASER_POINTER.get())) {
+            return LaserPointerItem.Mode.POINT;
+        }
+        CompoundTag tag = stack.getTag();
+        if (tag == null || !tag.contains("Mode")) {
+            return LaserPointerItem.Mode.POINT;
+        }
+        try {
+            return LaserPointerItem.Mode.valueOf(tag.getString("Mode"));
+        } catch (IllegalArgumentException e) {
+            return LaserPointerItem.Mode.POINT;
+        }
+    }
+    
+    private static boolean hasPathStartPoint(ItemStack stack) {
+        if (!stack.is(ModItems.LASER_POINTER.get())) {
+            return false;
+        }
+        CompoundTag tag = stack.getTag();
+        return tag != null && tag.hasUUID("PathMarkerId");
     }
 }
