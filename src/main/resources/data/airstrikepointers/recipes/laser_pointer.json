@@ -1,0 +1,40 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "ABC",
+    "DEF",
+    "GHI"
+  ],
+  "key": {
+    "A": {
+      "item": "minecraft:gold_ingot"
+    },
+    "B": {
+      "item": "minecraft:redstone"
+    },
+    "C": {
+      "item": "minecraft:iron_ingot"
+    },
+    "D": {
+      "item": "minecraft:green_dye"
+    },
+    "E": {
+      "item": "minecraft:diamond"
+    },
+    "F": {
+      "item": "minecraft:leather"
+    },
+    "G": {
+      "item": "minecraft:iron_ingot"
+    },
+    "H": {
+      "item": "minecraft:glass"
+    },
+    "I": {
+      "item": "minecraft:iron_ingot"
+    }
+  },
+  "result": {
+    "item": "airstrikepointers:laser_pointer"
+  }
+}
