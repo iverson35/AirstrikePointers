@@ -103,7 +103,8 @@ public class MarkerStorage extends SavedData {
         incrementPlayerCount(ownerId);
         setDirty();
 
-        broadcastToAll(new CreatePathMarkerPacket(markerId, ownerId, startPos, null, (float) startPos.y, color, teamName, lifetimeTicks, true, 0));
+        // 注意：起点预览只在本地显示，不广播给其他玩家
+        // 本地客户端的标记由 LaserPointerItem 直接添加
         return marker;
     }
 

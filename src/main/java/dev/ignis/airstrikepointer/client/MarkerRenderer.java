@@ -31,10 +31,13 @@ public class MarkerRenderer {
     private static final ResourceLocation POINT_TEXTURE = new ResourceLocation(AirstrikePointers.MODID, "textures/marker/point.png");
     @SuppressWarnings("removal")
     private static final ResourceLocation PATH_TEXTURE = new ResourceLocation(AirstrikePointers.MODID, "textures/marker/path.png");
+    @SuppressWarnings("removal")
+    private static final ResourceLocation PATH_START_TEXTURE = new ResourceLocation(AirstrikePointers.MODID, "textures/marker/path_start.png");
 
     // 自定义RenderType：无深度测试（穿墙显示）
     private static final RenderType MARKER_RENDER_TYPE = createMarkerRenderType(POINT_TEXTURE);
     private static final RenderType PATH_RENDER_TYPE = createMarkerRenderType(PATH_TEXTURE);
+    private static final RenderType PATH_START_RENDER_TYPE = createMarkerRenderType(PATH_START_TEXTURE);
 
     private static RenderType createMarkerRenderType(ResourceLocation texture) {
         return RenderType.create(
@@ -197,10 +200,18 @@ public class MarkerRenderer {
     }
 
     private static void renderPathMarker(PoseStack poseStack, MultiBufferSource bufferSource, ClientPathMarker marker) {
-        if (marker.endPos == null) return;
-
         Minecraft mc = Minecraft.getInstance();
         Vec3 cameraPos = mc.gameRenderer.getMainCamera().getPosition();
+
+        float r = ((marker.color >> 16) & 0xFF) / 255f;
+        float g = ((marker.color >> 8) & 0xFF) / 255f;
+        float b = (marker.color & 0xFF) / 255f;
+
+        // 如果路径未完成（只有起点），在起点渲染一个标记
+        if (marker.endPos == null) {
+            renderPathStartMarker(poseStack, bufferSource, marker, cameraPos, r, g, b);
+            return;
+        }
 
         // 计算路径中点到相机的距离用于自适应宽度
         Vec3 midPoint = marker.startPos.add(marker.endPos).scale(0.5);
@@ -222,10 +233,6 @@ public class MarkerRenderer {
         Vec3 dir = marker.endPos.subtract(marker.startPos);
         float length = (float) dir.horizontalDistance();
         if (length < 0.01f) return;
-
-        float r = ((marker.color >> 16) & 0xFF) / 255f;
-        float g = ((marker.color >> 8) & 0xFF) / 255f;
-        float b = (marker.color & 0xFF) / 255f;
 
         poseStack.pushPose();
         poseStack.translate(startX, y, startZ);
@@ -255,6 +262,43 @@ public class MarkerRenderer {
         vertex(vertexConsumer, pose, -width, 0.05f, length, u2, 1, r, g, b, alpha);
         vertex(vertexConsumer, pose, width, 0.05f, length, u2, 0, r, g, b, alpha);
         vertex(vertexConsumer, pose, width, 0.05f, 0, u1, 0, r, g, b, alpha);
+
+        poseStack.popPose();
+    }
+
+    private static void renderPathStartMarker(PoseStack poseStack, MultiBufferSource bufferSource, ClientPathMarker marker, Vec3 cameraPos, float r, float g, float b) {
+        double distance = marker.startPos.distanceTo(cameraPos);
+
+        // 距离自适应大小：越远越大，但有最小值（与点标记相同的逻辑）
+        float minDistance = 32.0f;
+        float maxDistance = 640.0f;
+        float minScale = 1f;
+        float maxScale = 5f;
+
+        float distanceFactor = (float) Math.min(1.0, Math.max(0.0, (distance - minDistance) / (maxDistance - minDistance)));
+        float scale = minScale + (maxScale - minScale) * distanceFactor;
+
+        float x = (float) marker.startPos.x;
+        float y = (float) (marker.startPos.y + 0.5);
+        float z = (float) marker.startPos.z;
+
+        poseStack.pushPose();
+        poseStack.translate(x, y, z);
+
+        // Billboard：使面片朝向相机
+        Minecraft mc = Minecraft.getInstance();
+        poseStack.mulPose(mc.getEntityRenderDispatcher().cameraOrientation());
+        poseStack.scale(scale, scale, scale);
+
+        VertexConsumer vertexConsumer = bufferSource.getBuffer(PATH_START_RENDER_TYPE);
+        PoseStack.Pose pose = poseStack.last();
+
+        // 绘制面片
+        float alpha = 0.8f;
+        vertex(vertexConsumer, pose, -1, -1, 0, 0, 1, r, g, b, alpha);
+        vertex(vertexConsumer, pose, 1, -1, 0, 1, 1, r, g, b, alpha);
+        vertex(vertexConsumer, pose, 1, 1, 0, 1, 0, r, g, b, alpha);
+        vertex(vertexConsumer, pose, -1, 1, 0, 0, 0, r, g, b, alpha);
 
         poseStack.popPose();
     }

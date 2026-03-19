@@ -171,6 +171,12 @@ public class LaserPointerItem extends Item {
                 if (marker != null) {
                     setPathMarkerId(stack, marker.getMarkerId());
                     player.displayClientMessage(Component.literal("已设置起点，长按右键设置终点").withStyle(ChatFormatting.YELLOW), true);
+                    // 向创建者的客户端发送预览包（只在本地显示起点标记）
+                    int lifetimeTicks = marker.getRemainingTicks();
+                    CreatePathMarkerPacket previewPacket = new CreatePathMarkerPacket(
+                            marker.getMarkerId(), player.getUUID(), targetPos, null,
+                            (float) targetPos.y, color, teamName, lifetimeTicks, true, 0);
+                    NetworkHandler.CHANNEL.sendTo(previewPacket, ((ServerPlayer) player).connection.connection, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT);
                 } else {
                     player.displayClientMessage(Component.literal("标记数量已达上限").withStyle(ChatFormatting.RED), true);
                 }
