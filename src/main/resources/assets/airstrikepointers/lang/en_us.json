@@ -14,5 +14,8 @@
   "message.airstrikepointers.path_created": "Path created",
   "message.airstrikepointers.path_start_set": "Start point set, hold right click to set end",
   "message.airstrikepointers.marker_limit_reached": "Marker limit reached",
-  "message.airstrikepointers.markers_cleared": "All markers cleared"
+  "message.airstrikepointers.markers_cleared": "All markers cleared",
+  "message.airstrikepointers.marker_notification": "marked a location",
+  "message.airstrikepointers.entity_target": "Target: %s",
+  "message.airstrikepointers.path_info": "[%s, %s, %s] -> [%s, %s, %s] Heading %s°"
 }

@@ -5,6 +5,7 @@ import dev.ignis.airstrikepointer.Config;
 import dev.ignis.airstrikepointer.network.*;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
@@ -226,15 +227,16 @@ public class MarkerStorage extends SavedData {
 
         // 构建颜色代码
         String hexColor = String.format("#%06X", marker.getColor() & 0xFFFFFF);
-        String teamPrefix = marker.getTeamName().isEmpty() ? "" : "[" + marker.getTeamName() + "]";
+        String teamPrefix = getTeamDisplayName(server, marker.getTeamName());
 
-        // 构建悬浮提示内容
+        // 构建悬浮提示内容：先输出位置，再输出实体（如果是实体标记）
+        Vec3 pos = marker.getPosition();
+        String posText = String.format("[%.1f, %.1f, %.1f]", pos.x, pos.y, pos.z);
         String hoverText;
         if (targetType == CreatePointMarkerPacket.TARGET_ENTITY && !entityName.isEmpty()) {
-            hoverText = "实体: " + entityName;
+            hoverText = posText + " " + Component.translatable("message.airstrikepointers.entity_target", entityName).getString();
         } else {
-            Vec3 pos = marker.getPosition();
-            hoverText = String.format("[%.1f, %.1f, %.1f]", pos.x, pos.y, pos.z);
+            hoverText = posText;
         }
 
         // 发送给所有玩家
@@ -250,18 +252,32 @@ public class MarkerStorage extends SavedData {
         if (server == null) return;
 
         String hexColor = String.format("#%06X", marker.getColor() & 0xFFFFFF);
-        String teamPrefix = marker.getTeamName().isEmpty() ? "" : "[" + marker.getTeamName() + "]";
+        String teamPrefix = getTeamDisplayName(server, marker.getTeamName());
 
         Vec3 start = marker.getStartPos();
         Vec3 end = marker.getEndPos();
-        String hoverText = String.format("[%.1f, %.1f, %.1f] -> [%.1f, %.1f, %.1f] 航向%.0f°",
-                start.x, start.y, start.z, end.x, end.y, end.z, headingAngle);
+        String hoverText = Component.translatable("message.airstrikepointers.path_info",
+                String.format("%.1f", start.x), String.format("%.1f", start.y), String.format("%.1f", start.z),
+                String.format("%.1f", end.x), String.format("%.1f", end.y), String.format("%.1f", end.z),
+                String.format("%.0f", headingAngle)).getString();
 
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             if (shouldPlayerSeeMarker(player, marker.getOwnerId(), marker.getTeamName())) {
                 sendMarkerMessage(player, hexColor, teamPrefix, playerName, hoverText);
             }
         }
+    }
+
+    private String getTeamDisplayName(MinecraftServer server, String teamName) {
+        if (teamName == null || teamName.isEmpty()) {
+            return "";
+        }
+        var scoreboard = server.getScoreboard();
+        var team = scoreboard.getPlayerTeam(teamName);
+        if (team == null) {
+            return "[" + teamName + "]";
+        }
+        return "[" + team.getDisplayName().getString() + "]";
     }
 
     private boolean shouldPlayerSeeMarker(ServerPlayer player, UUID ownerId, String markerTeamName) {
@@ -285,8 +301,9 @@ public class MarkerStorage extends SavedData {
         // teamPrefix 已经包含方括号，如 "[TeamName]"
         String fullName = teamPrefix.isEmpty() ? playerName : teamPrefix + playerName;
 
-        String message = String.format("[{\"text\":\"%s\",\"color\":\"%s\",\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"%s\"}},{\"text\":\" 标记了一个位置\",\"color\":\"white\"}]",
-                fullName.replace("\"", "\\\""), hexColor, hoverText.replace("\"", "\\\""));
+        String markerText = Component.translatable("message.airstrikepointers.marker_notification").getString();
+        String message = String.format("[{\"text\":\"%s\",\"color\":\"%s\",\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"%s\"}},{\"text\":\" %s\",\"color\":\"white\"}]",
+                fullName.replace("\"", "\\\""), hexColor, hoverText.replace("\"", "\\\""), markerText.replace("\"", "\\\""));
 
         player.sendSystemMessage(net.minecraft.network.chat.Component.Serializer.fromJson(message));
     }
