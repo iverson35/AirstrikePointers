@@ -28,5 +28,7 @@ public class NetworkHandler {
                 SyncMarkersPacket::encode, SyncMarkersPacket::decode, SyncMarkersPacket::handle);
         CHANNEL.registerMessage(packetId++, ModeSwitchPacket.class,
                 ModeSwitchPacket::encode, ModeSwitchPacket::decode, ModeSwitchPacket::handle);
+        CHANNEL.registerMessage(packetId++, RemoveMarkerPacket.class,
+                RemoveMarkerPacket::encode, RemoveMarkerPacket::decode, RemoveMarkerPacket::handle);
     }
 }

@@ -3,6 +3,7 @@ package dev.ignis.airstrikepointer.markers;
 import dev.ignis.airstrikepointer.AirstrikePointers;
 import dev.ignis.airstrikepointer.Config;
 import dev.ignis.airstrikepointer.network.*;
+import dev.ignis.airstrikepointer.network.RemoveMarkerPacket;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.network.chat.Component;
@@ -149,6 +150,8 @@ public class MarkerStorage extends SavedData {
 
     public void tick() {
         boolean changed = false;
+        List<UUID> expiredPointMarkers = new ArrayList<>();
+        List<UUID> expiredPathMarkers = new ArrayList<>();
 
         Iterator<PointMarker> pointIter = pointMarkers.values().iterator();
         while (pointIter.hasNext()) {
@@ -156,6 +159,7 @@ public class MarkerStorage extends SavedData {
             if (marker.tick()) {
                 pointIter.remove();
                 decrementPlayerCount(marker.getOwnerId());
+                expiredPointMarkers.add(marker.getMarkerId());
                 changed = true;
             }
         }
@@ -166,8 +170,17 @@ public class MarkerStorage extends SavedData {
             if (marker.tick()) {
                 pathIter.remove();
                 decrementPlayerCount(marker.getOwnerId());
+                expiredPathMarkers.add(marker.getMarkerId());
                 changed = true;
             }
+        }
+
+        // 通知客户端删除过期的标记
+        for (UUID markerId : expiredPointMarkers) {
+            broadcastToAll(new RemoveMarkerPacket(markerId, false));
+        }
+        for (UUID markerId : expiredPathMarkers) {
+            broadcastToAll(new RemoveMarkerPacket(markerId, true));
         }
 
         if (changed) {
