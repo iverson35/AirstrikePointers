@@ -19,11 +19,13 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.Team;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.client.extensions.common.IClientItemExtensions;
 import net.minecraftforge.network.PacketDistributor;
 
 import javax.annotation.Nullable;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 public class LaserPointerItem extends Item {
     private static final String MODE_KEY = "Mode";
@@ -52,6 +54,11 @@ public class LaserPointerItem extends Item {
 
     public LaserPointerItem(Properties properties) {
         super(properties);
+    }
+
+    @Override
+    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
+        consumer.accept(new dev.ignis.airstrikepointer.client.LaserPointerItemExtensions());
     }
 
     @Override
