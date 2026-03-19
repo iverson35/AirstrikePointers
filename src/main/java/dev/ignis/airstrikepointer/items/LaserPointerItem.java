@@ -69,8 +69,15 @@ public class LaserPointerItem extends Item {
     @Override
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltipComponents, TooltipFlag isAdvanced) {
         Mode mode = getMode(stack);
-        tooltipComponents.add(Component.literal("模式: ").append(Component.literal(mode.getDisplayName()).withStyle(mode.getColor())));
-        tooltipComponents.add(Component.literal("Shift+右键切换模式").withStyle(ChatFormatting.GRAY));
+        String modeKey = switch (mode) {
+            case POINT -> "mode.airstrikepointers.point";
+            case PATH -> "mode.airstrikepointers.path";
+            case CLEAR -> "mode.airstrikepointers.clear";
+        };
+        tooltipComponents.add(Component.translatable("tooltip.airstrikepointers.mode", 
+                Component.translatable(modeKey).withStyle(mode.getColor())));
+        tooltipComponents.add(Component.translatable("tooltip.airstrikepointers.switch_mode").withStyle(ChatFormatting.GRAY));
+        tooltipComponents.add(Component.translatable("tooltip.airstrikepointers.cancel_mark").withStyle(ChatFormatting.GRAY));
         super.appendHoverText(stack, level, tooltipComponents, isAdvanced);
     }
 
@@ -105,6 +112,10 @@ public class LaserPointerItem extends Item {
     public void releaseUsing(ItemStack stack, Level level, LivingEntity livingEntity, int timeCharged) {
         // 松开右键时执行标记操作
         if (livingEntity instanceof Player player && !level.isClientSide) {
+            // 潜行模式下停止使用，什么也不做
+            if (player.isShiftKeyDown()) {
+                return;
+            }
             performMarking(player, stack);
             // 播放结束使用声音 (note block)
             level.playSound(null, player.getX(), player.getY(), player.getZ(),
