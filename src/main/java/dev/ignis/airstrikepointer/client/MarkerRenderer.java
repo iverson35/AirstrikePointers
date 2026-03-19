@@ -242,11 +242,15 @@ public class MarkerRenderer {
         float uOffset = -(marker.age % 100) / 100f; // 负号使动画方向正确
         float alpha = 0.7f;
 
-        // 绘制平面路径条带 - 修复UV坐标
-        // 使用固定纹理重复频率，每格一个纹理周期
-        float textureRepeat = 1.0f; // 每格重复一次纹理
+        // 绘制平面路径条带
+        // 宽度方向始终显示一个完整纹理（V: 0-1）
+        // 长度方向根据宽高比例调整纹理重复周期，保持纹理比例
+        float aspectRatio = width; // 宽度决定纹理比例（假设纹理本身是正方形）
+        float textureRepeat = 1.0f / aspectRatio; // 根据宽度调整长度方向的重复频率
         float u1 = uOffset;
         float u2 = length * textureRepeat + uOffset;
+
+        // V坐标始终为 0-1，不随宽度变化
         vertex(vertexConsumer, pose, -width, 0.05f, 0, u1, 1, r, g, b, alpha);
         vertex(vertexConsumer, pose, -width, 0.05f, length, u2, 1, r, g, b, alpha);
         vertex(vertexConsumer, pose, width, 0.05f, length, u2, 0, r, g, b, alpha);
