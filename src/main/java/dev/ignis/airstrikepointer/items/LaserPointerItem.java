@@ -10,6 +10,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.Level;
@@ -55,7 +56,7 @@ public class LaserPointerItem extends Item {
 
     @Override
     public UseAnim getUseAnimation(ItemStack stack) {
-        return UseAnim.CROSSBOW;
+        return UseAnim.SPYGLASS;
     }
 
     @Override
@@ -67,65 +68,39 @@ public class LaserPointerItem extends Item {
     }
 
     @Override
+    public int getUseDuration(ItemStack stack) {
+        return 72000; // 很长的使用时间
+    }
+
+    @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand usedHand) {
         ItemStack stack = player.getItemInHand(usedHand);
 
         if (player.isShiftKeyDown()) {
-            if (level.isClientSide) {
-                NetworkHandler.CHANNEL.sendToServer(new ModeSwitchPacket());
+            // Shift+右键直接切换模式
+            if (!level.isClientSide) {
+                switchMode(stack);
+                player.displayClientMessage(Component.literal("模式切换为: " + getMode(stack).getDisplayName()).withStyle(getMode(stack).getColor()), true);
             }
             return InteractionResultHolder.success(stack);
         }
 
-        if (level.isClientSide) {
-            // 首先尝试检测实体
-            Vec3 eyePos = player.getEyePosition(0.0f);
-            Vec3 lookVec = player.getViewVector(0.0f);
-            Vec3 endPos = eyePos.add(lookVec.x * 100.0, lookVec.y * 100.0, lookVec.z * 100.0);
+        // 开始使用（望远镜视角）
+        player.startUsingItem(usedHand);
+        return InteractionResultHolder.consume(stack);
+    }
 
-            // 检测实体
-            var entityHitResult = net.minecraft.world.entity.projectile.ProjectileUtil.getEntityHitResult(
-                    level, player, eyePos, endPos,
-                    player.getBoundingBox().expandTowards(lookVec.scale(100.0)).inflate(1.0),
-                    entity -> !entity.isSpectator() && entity.isPickable()
-            );
-
-            Vec3 targetPos;
-            int targetType;
-            String entityName = "";
-
-            if (entityHitResult != null) {
-                // 命中实体
-                targetPos = entityHitResult.getLocation();
-                targetType = UsePointerPacket.TARGET_ENTITY;
-                entityName = entityHitResult.getEntity().getDisplayName().getString();
-            } else {
-                // 检测方块
-                HitResult blockHitResult = player.pick(100.0, 0.0f, false);
-                if (blockHitResult.getType() == HitResult.Type.BLOCK) {
-                    targetPos = blockHitResult.getLocation();
-                    targetType = UsePointerPacket.TARGET_BLOCK;
-                } else {
-                    targetPos = endPos;
-                    targetType = UsePointerPacket.TARGET_MISS;
-                }
-            }
-
-            NetworkHandler.CHANNEL.sendToServer(new UsePointerPacket(targetPos.x, targetPos.y, targetPos.z, targetType, entityName));
+    @Override
+    public void releaseUsing(ItemStack stack, Level level, LivingEntity livingEntity, int timeCharged) {
+        // 松开右键时执行标记操作
+        if (livingEntity instanceof Player player && !level.isClientSide) {
+            performMarking(player, stack);
         }
-
-        return InteractionResultHolder.success(stack);
     }
 
-    public static void switchMode(ItemStack stack) {
-        Mode currentMode = getMode(stack);
-        Mode nextMode = currentMode.next();
-        setMode(stack, nextMode);
-    }
-
-    public static void onServerUse(ServerPlayer player, ItemStack stack, HitResult hitResult, String entityName) {
-        Mode mode = getMode(stack);
+    private void performMarking(Player player, ItemStack stack) {
         Level level = player.level();
+        Mode mode = getMode(stack);
 
         if (mode == Mode.CLEAR) {
             MarkerStorage.get(level).clearMarkersByOwner(player.getUUID());
@@ -133,18 +108,39 @@ public class LaserPointerItem extends Item {
             return;
         }
 
-        Vec3 targetPos = hitResult.getLocation();
+        // 检测目标
+        Vec3 eyePos = player.getEyePosition(0.0f);
+        Vec3 lookVec = player.getViewVector(0.0f);
+        Vec3 endPos = eyePos.add(lookVec.x * 100.0, lookVec.y * 100.0, lookVec.z * 100.0);
+
+        var entityHitResult = net.minecraft.world.entity.projectile.ProjectileUtil.getEntityHitResult(
+                level, player, eyePos, endPos,
+                player.getBoundingBox().expandTowards(lookVec.scale(100.0)).inflate(1.0),
+                entity -> !entity.isSpectator() && entity.isPickable()
+        );
+
+        Vec3 targetPos;
+        int targetType;
+        String entityName = "";
+
+        if (entityHitResult != null) {
+            targetPos = entityHitResult.getLocation();
+            targetType = CreatePointMarkerPacket.TARGET_ENTITY;
+            entityName = entityHitResult.getEntity().getDisplayName().getString();
+        } else {
+            HitResult blockHitResult = player.pick(100.0, 0.0f, false);
+            if (blockHitResult.getType() == HitResult.Type.BLOCK) {
+                targetPos = blockHitResult.getLocation();
+                targetType = CreatePointMarkerPacket.TARGET_BLOCK;
+            } else {
+                targetPos = endPos;
+                targetType = CreatePointMarkerPacket.TARGET_MISS;
+            }
+        }
+
         int color = getPlayerColor(player);
         String teamName = getPlayerTeamName(player);
         MarkerStorage storage = MarkerStorage.get(level);
-
-        // 确定目标类型
-        int targetType = CreatePointMarkerPacket.TARGET_MISS;
-        if (hitResult.getType() == HitResult.Type.BLOCK) {
-            targetType = CreatePointMarkerPacket.TARGET_BLOCK;
-        } else if (hitResult.getType() == HitResult.Type.ENTITY) {
-            targetType = CreatePointMarkerPacket.TARGET_ENTITY;
-        }
 
         if (mode == Mode.POINT) {
             storage.createPointMarker(player.getUUID(), targetPos, color, teamName, targetType, entityName, player.getDisplayName().getString());
@@ -159,12 +155,18 @@ public class LaserPointerItem extends Item {
                 var marker = storage.createPathStart(player.getUUID(), targetPos, color, teamName, player.getDisplayName().getString());
                 if (marker != null) {
                     setPathMarkerId(stack, marker.getMarkerId());
-                    player.displayClientMessage(Component.literal("已设置起点，再次右键设置终点").withStyle(ChatFormatting.YELLOW), true);
+                    player.displayClientMessage(Component.literal("已设置起点，长按右键设置终点").withStyle(ChatFormatting.YELLOW), true);
                 } else {
                     player.displayClientMessage(Component.literal("标记数量已达上限").withStyle(ChatFormatting.RED), true);
                 }
             }
         }
+    }
+
+    public static void switchMode(ItemStack stack) {
+        Mode currentMode = getMode(stack);
+        Mode nextMode = currentMode.next();
+        setMode(stack, nextMode);
     }
 
     private static Mode getMode(ItemStack stack) {
