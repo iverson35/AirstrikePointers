@@ -7,8 +7,15 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.projectile.ProjectileUtil;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
 import net.minecraftforge.client.event.RenderHandEvent;
@@ -69,6 +76,9 @@ public class LaserPointerOverlayRenderer {
         
         // 渲染望远镜覆盖层
         renderSpyglassOverlay(event.getGuiGraphics());
+        
+        // 渲染目标信息（距离和实体名称）
+        renderTargetInfo(event.getGuiGraphics(), player);
     }
     
     @SubscribeEvent
@@ -165,5 +175,62 @@ public class LaserPointerOverlayRenderer {
         float tmp = 1 - t;
         float ease = (float) (1 - java.lang.Math.pow(tmp, 5));
         return min + (max - min) * ease;
+    }
+    
+    private static void renderTargetInfo(GuiGraphics gui, LocalPlayer player) {
+        Minecraft mc = Minecraft.getInstance();
+        int screenWidth = gui.guiWidth();
+        int screenHeight = gui.guiHeight();
+        
+        // 探测距离最大300格
+        final double MAX_DISTANCE = 300.0;
+        
+        Vec3 eyePos = player.getEyePosition(0.0f);
+        Vec3 lookVec = player.getViewVector(0.0f);
+        Vec3 endPos = eyePos.add(lookVec.x * MAX_DISTANCE, lookVec.y * MAX_DISTANCE, lookVec.z * MAX_DISTANCE);
+        
+        // 首先检测实体
+        AABB searchBox = player.getBoundingBox().expandTowards(lookVec.scale(MAX_DISTANCE)).inflate(1.0);
+        EntityHitResult entityHit = ProjectileUtil.getEntityHitResult(
+                player.level(), player, eyePos, endPos, searchBox,
+                entity -> !entity.isSpectator() && entity.isPickable()
+        );
+        
+        Vec3 targetPos;
+        Entity targetEntity = null;
+        
+        if (entityHit != null) {
+            targetPos = entityHit.getLocation();
+            targetEntity = entityHit.getEntity();
+        } else {
+            // 检测方块
+            HitResult blockHit = player.pick(MAX_DISTANCE, 0.0f, false);
+            if (blockHit.getType() == HitResult.Type.BLOCK) {
+                targetPos = blockHit.getLocation();
+            } else {
+                targetPos = endPos;
+            }
+        }
+        
+        // 计算距离
+        double distance = eyePos.distanceTo(targetPos);
+        
+        // 准星位置（屏幕中心）
+        int centerX = screenWidth / 2;
+        int centerY = screenHeight / 2;
+        
+        // 信息位置：准星右上角偏移
+        int infoX = centerX + 20;
+        int infoY = centerY - 10;
+        
+        // 渲染距离信息
+        String distanceText = String.format("%.1fm", distance);
+        gui.drawString(mc.font, distanceText, infoX, infoY, 0xFFFFFF);
+        
+        // 如果是实体，额外显示displayname
+        if (targetEntity != null) {
+            String entityName = targetEntity.getDisplayName().getString();
+            gui.drawString(mc.font, entityName, infoX, infoY + 12, 0xFFFF55); // 黄色
+        }
     }
 }
