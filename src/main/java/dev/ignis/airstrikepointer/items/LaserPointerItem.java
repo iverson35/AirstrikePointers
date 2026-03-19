@@ -87,6 +87,10 @@ public class LaserPointerItem extends Item {
 
         // 开始使用（望远镜视角）
         player.startUsingItem(usedHand);
+        // 播放望远镜使用声音
+        level.playSound(null, player.getX(), player.getY(), player.getZ(), 
+                net.minecraft.sounds.SoundEvents.SPYGLASS_USE, 
+                net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
         return InteractionResultHolder.consume(stack);
     }
 
@@ -95,6 +99,10 @@ public class LaserPointerItem extends Item {
         // 松开右键时执行标记操作
         if (livingEntity instanceof Player player && !level.isClientSide) {
             performMarking(player, stack);
+            // 播放结束使用声音 (note block)
+            level.playSound(null, player.getX(), player.getY(), player.getZ(),
+                    net.minecraft.sounds.SoundEvents.NOTE_BLOCK_BIT.value(),
+                    net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
         }
     }
 
