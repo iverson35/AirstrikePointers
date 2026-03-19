@@ -29,6 +29,9 @@ public class LaserPointerOverlayRenderer {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
         
+        // 只在第一人称时生效
+        if (!mc.options.getCameraType().isFirstPerson()) return;
+        
         if (player == null || !player.isUsingItem()) return;
         
         if (!player.getUseItem().is(ModItems.LASER_POINTER.get())) return;
@@ -44,6 +47,9 @@ public class LaserPointerOverlayRenderer {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
         
+        // 只在第一人称时生效
+        if (!mc.options.getCameraType().isFirstPerson()) return;
+        
         if (player == null || !player.isUsingItem()) return;
         
         if (!player.getUseItem().is(ModItems.LASER_POINTER.get())) return;
@@ -56,6 +62,9 @@ public class LaserPointerOverlayRenderer {
     public static void onRenderHand(RenderHandEvent event) {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
+        
+        // 只在第一人称时生效
+        if (!mc.options.getCameraType().isFirstPerson()) return;
         
         if (player == null || !player.isUsingItem()) return;
         

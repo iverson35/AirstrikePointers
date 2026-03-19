@@ -2,6 +2,7 @@ package dev.ignis.airstrikepointer.client;
 
 import dev.ignis.airstrikepointer.AirstrikePointers;
 import dev.ignis.airstrikepointer.items.ModItems;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.item.ItemProperties;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;

@@ -18,6 +18,9 @@ public class LaserPointerFovHandler {
     public static void onComputeFovModifier(ComputeFovModifierEvent event) {
         Minecraft minecraft = Minecraft.getInstance();
         
+        // 只在第一人称时生效
+        if (!minecraft.options.getCameraType().isFirstPerson()) return;
+        
         // 只有当玩家使用激光指示器时才修改FOV
         if (minecraft.player == null || !minecraft.player.isUsingItem()) {
             return;

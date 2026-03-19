@@ -25,6 +25,16 @@ public class LaserPointerSensitivityHandler {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null) return;
         
+        // 只在第一人称时生效
+        if (!minecraft.options.getCameraType().isFirstPerson()) {
+            // 非第一人称时恢复灵敏度
+            if (originalSensitivity >= 0) {
+                minecraft.options.sensitivity().set(originalSensitivity);
+                originalSensitivity = -1;
+            }
+            return;
+        }
+        
         Options options = minecraft.options;
         
         // 检查是否正在使用激光指示器
