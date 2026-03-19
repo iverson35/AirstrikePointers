@@ -14,8 +14,10 @@ import net.minecraftforge.client.event.RenderGuiOverlayEvent;
 import net.minecraftforge.client.event.RenderHandEvent;
 import net.minecraftforge.client.gui.overlay.NamedGuiOverlay;
 import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import org.joml.Math;
 
 @Mod.EventBusSubscriber(modid = AirstrikePointers.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public class LaserPointerOverlayRenderer {
@@ -23,6 +25,11 @@ public class LaserPointerOverlayRenderer {
     @SuppressWarnings("removal")
     // 使用自定义纹理
     private static final ResourceLocation SCOPE_LOCATION = new ResourceLocation(AirstrikePointers.MODID, "textures/gui/laser_pointer_scope.png");
+    
+    // 视野缩放动画状态
+    private static final float INITIAL_SCALE = 0.5F;
+    private static final float TARGET_SCALE = 1.05F;
+    private static float scopeScale = INITIAL_SCALE;
     
     @SubscribeEvent
     public static void onRenderOverlay(RenderGuiOverlayEvent.Pre event) {
@@ -50,9 +57,15 @@ public class LaserPointerOverlayRenderer {
         // 只在第一人称时生效
         if (!mc.options.getCameraType().isFirstPerson()) return;
         
-        if (player == null || !player.isUsingItem()) return;
+        if (player == null) return;
         
-        if (!player.getUseItem().is(ModItems.LASER_POINTER.get())) return;
+        if (!(player.isUsingItem() && player.getUseItem().is(ModItems.LASER_POINTER.get()))) {
+            scopeScale = INITIAL_SCALE;
+            return;
+        }
+        
+        // 更新动画
+        updateAnimation();
         
         // 渲染望远镜覆盖层
         renderSpyglassOverlay(event.getGuiGraphics());
@@ -71,6 +84,36 @@ public class LaserPointerOverlayRenderer {
         // 隐藏第一人称手部渲染
         if (player.getUseItem().is(ModItems.LASER_POINTER.get())) {
             event.setCanceled(true);
+        }
+    }
+    
+    // 在渲染时更新动画
+    private static void updateAnimation() {
+        Minecraft mc = Minecraft.getInstance();
+        
+        // 检查是否正在使用激光指示器且在第一人称
+        boolean isUsingLaserPointer = mc.player != null && 
+                                       mc.player.isUsingItem() && 
+                                       mc.player.getUseItem().is(ModItems.LASER_POINTER.get()) &&
+                                       mc.options.getCameraType().isFirstPerson();
+        
+        // 使用getDeltaFrameTime计算增量，在0.25秒内完成扩大
+        // 总距离 = 1.125F - 0.5F = 0.625F
+        // 每帧增量 = 总距离 / 0.25秒 * 帧时间补偿
+        float deltaFrame = mc.getDeltaFrameTime();
+        float totalDistance = TARGET_SCALE - INITIAL_SCALE; // 0.625F
+        float step = (totalDistance / 0.25F) * deltaFrame * 0.002F;
+        
+        if (isUsingLaserPointer) {
+            // 动画扩大到目标大小
+            if (scopeScale < TARGET_SCALE) {
+                scopeScale = Math.min(scopeScale + step, TARGET_SCALE);
+            }
+            // 调试输出
+            //System.out.println("[AirstrikePointer] scopeScale: " + scopeScale + ", step: " + step);
+        } else {
+            // 重置为初始大小
+            scopeScale = INITIAL_SCALE;
         }
     }
     
@@ -96,23 +139,31 @@ public class LaserPointerOverlayRenderer {
         int screenWidth = gui.guiWidth();
         int screenHeight = gui.guiHeight();
         
-        // 计算正方形区域
-        float size = (float) Math.min(screenWidth, screenHeight);
-        int renderSize = Mth.floor(size);
-        int x = (screenWidth - renderSize) / 2;
-        int y = (screenHeight - renderSize) / 2;
+        // 使用动画缩放值计算大小
+        float baseSize = (float) Math.min(screenWidth, screenHeight);
+        float renderSize = baseSize * easeOut(TARGET_SCALE,INITIAL_SCALE,scopeScale-INITIAL_SCALE);
+        int x = (int) ((screenWidth - renderSize) / 2);
+        int y = (int) ((screenHeight - renderSize) / 2);
         
         // 渲染望远镜纹理（调整透明度以匹配原版效果）
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 0.1F); // 降低整体透明度
-        gui.blit(SCOPE_LOCATION, x, y, -90, 0.0F, 0.0F, renderSize, renderSize, renderSize, renderSize);
+        gui.blit(SCOPE_LOCATION, x, y, -90, 0.0F, 0.0F, (int) renderSize, (int) renderSize, (int) renderSize, (int) renderSize);
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F); // 恢复
         
         // 四角黑色遮罩
-        int x2 = x + renderSize;
-        int y2 = y + renderSize;
+        int x2 = (int) (x + renderSize);
+        int y2 = (int) (y + renderSize);
         gui.fill(RenderType.guiOverlay(), 0, y2, screenWidth, screenHeight, -90, -16777216);
         gui.fill(RenderType.guiOverlay(), 0, 0, screenWidth, y, -90, -16777216);
         gui.fill(RenderType.guiOverlay(), 0, y, x, y2, -90, -16777216);
         gui.fill(RenderType.guiOverlay(), x2, y, screenWidth, y2, -90, -16777216);
+    }
+
+    private static float easeOut(float max, float min, float t) {
+        // easeOutQuad: 先快后慢的缓动效果
+        // t 应该在 0 到 1 之间
+        float tmp = 1 - t;
+        float ease = (float) (1 - java.lang.Math.pow(tmp, 5));
+        return min + (max - min) * ease;
     }
 }
