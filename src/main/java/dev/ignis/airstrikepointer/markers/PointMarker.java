@@ -6,14 +6,24 @@ import net.minecraft.world.phys.Vec3;
 import java.util.UUID;
 
 public class PointMarker extends MarkerData {
-    private final Vec3 position;
+    private Vec3 position;
+    private final UUID targetEntityId; // null if not tracking an entity
 
     public PointMarker(UUID markerId, UUID ownerId, Vec3 position, int color, String teamName, int lifetimeTicks) {
+        this(markerId, ownerId, position, color, teamName, lifetimeTicks, null);
+    }
+
+    public PointMarker(UUID markerId, UUID ownerId, Vec3 position, int color, String teamName, int lifetimeTicks, UUID targetEntityId) {
         super(markerId, ownerId, color, teamName, lifetimeTicks);
         this.position = position;
+        this.targetEntityId = targetEntityId;
     }
 
     public Vec3 getPosition() { return position; }
+    public void setPosition(Vec3 position) { this.position = position; }
+    public UUID getTargetEntityId() { return targetEntityId; }
+
+    public boolean isTrackingEntity() { return targetEntityId != null; }
 
     @Override
     public CompoundTag save() {
@@ -26,6 +36,9 @@ public class PointMarker extends MarkerData {
         tag.putInt("color", color);
         tag.putString("teamName", teamName);
         tag.putInt("remainingTicks", remainingTicks);
+        if (targetEntityId != null) {
+            tag.putUUID("targetEntityId", targetEntityId);
+        }
         return tag;
     }
 
@@ -39,16 +52,21 @@ public class PointMarker extends MarkerData {
         tag.putInt("color", color);
         tag.putString("teamName", teamName);
         tag.putInt("remainingTicks", remainingTicks);
+        if (targetEntityId != null) {
+            tag.putUUID("targetEntityId", targetEntityId);
+        }
     }
 
     public static PointMarker load(CompoundTag tag) {
+        UUID targetEntityId = tag.hasUUID("targetEntityId") ? tag.getUUID("targetEntityId") : null;
         return new PointMarker(
                 tag.getUUID("markerId"),
                 tag.getUUID("ownerId"),
                 new Vec3(tag.getDouble("x"), tag.getDouble("y"), tag.getDouble("z")),
                 tag.getInt("color"),
                 tag.getString("teamName"),
-                tag.getInt("remainingTicks")
+                tag.getInt("remainingTicks"),
+                targetEntityId
         );
     }
 }

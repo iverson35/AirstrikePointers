@@ -6,6 +6,7 @@ import dev.ignis.airstrikepointer.AirstrikePointers;
 import dev.ignis.airstrikepointer.Config;
 import dev.ignis.airstrikepointer.network.CreatePathMarkerPacket;
 import dev.ignis.airstrikepointer.network.CreatePointMarkerPacket;
+import dev.ignis.airstrikepointer.network.UpdatePointMarkerPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -67,6 +68,13 @@ public class MarkerRenderer {
     public static void addPointMarker(CreatePointMarkerPacket packet) {
         if (shouldShowMarker(packet.ownerId(), packet.teamName())) {
             pointMarkers.put(packet.markerId(), new ClientPointMarker(packet));
+        }
+    }
+
+    public static void updatePointMarkerPosition(UpdatePointMarkerPacket packet) {
+        ClientPointMarker marker = pointMarkers.get(packet.markerId());
+        if (marker != null) {
+            marker.position = packet.position();
         }
     }
 
@@ -307,7 +315,7 @@ public class MarkerRenderer {
     private static class ClientPointMarker {
         final UUID markerId;
         final UUID ownerId;
-        final Vec3 position;
+        Vec3 position;
         final int color;
         final String teamName;
         int remainingTicks;

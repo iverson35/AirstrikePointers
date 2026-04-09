@@ -30,5 +30,7 @@ public class NetworkHandler {
                 ModeSwitchPacket::encode, ModeSwitchPacket::decode, ModeSwitchPacket::handle);
         CHANNEL.registerMessage(packetId++, RemoveMarkerPacket.class,
                 RemoveMarkerPacket::encode, RemoveMarkerPacket::decode, RemoveMarkerPacket::handle);
+        CHANNEL.registerMessage(packetId++, UpdatePointMarkerPacket.class,
+                UpdatePointMarkerPacket::encode, UpdatePointMarkerPacket::decode, UpdatePointMarkerPacket::handle);
     }
 }

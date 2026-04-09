@@ -150,11 +150,13 @@ public class LaserPointerItem extends Item {
         Vec3 targetPos;
         int targetType;
         String entityName = "";
+        UUID targetEntityId = null;
 
         if (entityHitResult != null) {
             targetPos = entityHitResult.getLocation();
             targetType = CreatePointMarkerPacket.TARGET_ENTITY;
             entityName = entityHitResult.getEntity().getDisplayName().getString();
+            targetEntityId = entityHitResult.getEntity().getUUID();
         } else {
             HitResult blockHitResult = player.pick(300.0, 0.0f, false);
             if (blockHitResult.getType() == HitResult.Type.BLOCK) {
@@ -171,7 +173,7 @@ public class LaserPointerItem extends Item {
         MarkerStorage storage = MarkerStorage.get(level);
 
         if (mode == Mode.POINT) {
-            var marker = storage.createPointMarker(player.getUUID(), targetPos, color, teamName, targetType, entityName, player.getDisplayName().getString());
+            var marker = storage.createPointMarker(player.getUUID(), targetPos, color, teamName, targetType, entityName, targetEntityId, player.getDisplayName().getString());
             if (marker != null) {
                 player.displayClientMessage(Component.translatable("message.airstrikepointers.point_marked").withStyle(ChatFormatting.GREEN), true);
             } else {

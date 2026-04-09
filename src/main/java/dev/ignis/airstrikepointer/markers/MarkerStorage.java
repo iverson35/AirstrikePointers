@@ -22,6 +22,7 @@ public class MarkerStorage extends SavedData {
     private final Map<UUID, PointMarker> pointMarkers = new HashMap<>();
     private final Map<UUID, PathMarker> pathMarkers = new HashMap<>();
     private final Map<UUID, Integer> playerMarkerCount = new HashMap<>();
+    private int serverTickCounter = 0;
 
     public static MarkerStorage get(Level level) {
         if (level.isClientSide) {
@@ -76,14 +77,14 @@ public class MarkerStorage extends SavedData {
         return storage;
     }
 
-    public PointMarker createPointMarker(UUID ownerId, Vec3 position, int color, String teamName, int targetType, String entityName, String playerName) {
+    public PointMarker createPointMarker(UUID ownerId, Vec3 position, int color, String teamName, int targetType, String entityName, UUID targetEntityId, String playerName) {
         if (getPlayerMarkerCount(ownerId) >= Config.MAX_MARKERS_PER_PLAYER.get()) {
             return null;
         }
 
         UUID markerId = UUID.randomUUID();
         int lifetimeTicks = Config.MARKER_LIFETIME_SECONDS.get() * 20;
-        PointMarker marker = new PointMarker(markerId, ownerId, position, color, teamName, lifetimeTicks);
+        PointMarker marker = new PointMarker(markerId, ownerId, position, color, teamName, lifetimeTicks, targetEntityId);
         pointMarkers.put(markerId, marker);
         incrementPlayerCount(ownerId);
         setDirty();
@@ -149,9 +150,26 @@ public class MarkerStorage extends SavedData {
     }
 
     public void tick() {
+        serverTickCounter++;
         boolean changed = false;
         List<UUID> expiredPointMarkers = new ArrayList<>();
         List<UUID> expiredPathMarkers = new ArrayList<>();
+        List<PointMarker> updatedEntityMarkers = new ArrayList<>();
+
+        // Update entity-tracking markers every 10 ticks
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server != null && serverTickCounter % 10 == 0) {
+            for (PointMarker marker : pointMarkers.values()) {
+                if (marker.isTrackingEntity()) {
+                    var entity = server.overworld().getEntity(marker.getTargetEntityId());
+                    if (entity != null) {
+                        marker.setPosition(entity.position());
+                        updatedEntityMarkers.add(marker);
+                        changed = true;
+                    }
+                }
+            }
+        }
 
         Iterator<PointMarker> pointIter = pointMarkers.values().iterator();
         while (pointIter.hasNext()) {
@@ -181,6 +199,11 @@ public class MarkerStorage extends SavedData {
         }
         for (UUID markerId : expiredPathMarkers) {
             broadcastToAll(new RemoveMarkerPacket(markerId, true));
+        }
+
+        // 通知客户端更新实体标记位置
+        for (PointMarker marker : updatedEntityMarkers) {
+            broadcastToAll(new UpdatePointMarkerPacket(marker.getMarkerId(), marker.getPosition()));
         }
 
         if (changed) {
