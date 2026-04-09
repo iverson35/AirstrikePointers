@@ -7,21 +7,17 @@ import dev.ignis.airstrikepointer.Config;
 import dev.ignis.airstrikepointer.network.CreatePathMarkerPacket;
 import dev.ignis.airstrikepointer.network.CreatePointMarkerPacket;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import org.joml.Matrix4f;
 import org.joml.Quaternionf;
-import org.lwjgl.opengl.GL11;
 
 import java.util.*;
 
@@ -161,13 +157,7 @@ public class MarkerRenderer {
         double distance = marker.position.distanceTo(cameraPos);
 
         // 距离自适应大小：越远越大，但有最小�?
-        float minDistance = 32.0f;
-        float maxDistance = 640.0f;
-        float minScale = 1f;
-        float maxScale = 5f;
-
-        float distanceFactor = (float) Math.min(1.0, Math.max(0.0, (distance - minDistance) / (maxDistance - minDistance)));
-        float scale = minScale + (maxScale - minScale) * distanceFactor;
+        float scale = calculateConstantScreenSizeScale(distance);
 
         float x = (float) marker.position.x;
         float y = (float) (marker.position.y + 0.5);
@@ -195,6 +185,16 @@ public class MarkerRenderer {
         vertex(vertexConsumer, pose, -1, 1, 0, 0, 0, r, g, b, alpha);
 
         poseStack.popPose();
+    }
+
+    /**
+     * 计算屏幕空间恒定大小的缩放值
+     *
+     * @param distance 到相机的距离
+     * @return 缩放值
+     */
+    private static float calculateConstantScreenSizeScale(double distance) {
+        return (float) 1.5 * (float) (distance / (float) 32.0);
     }
 
     private static void vertex(VertexConsumer consumer, PoseStack.Pose pose, float x, float y, float z, float u, float v, float r, float g, float b, float a) {
@@ -277,14 +277,7 @@ public class MarkerRenderer {
     private static void renderPathStartMarker(PoseStack poseStack, MultiBufferSource bufferSource, ClientPathMarker marker, Vec3 cameraPos, float r, float g, float b) {
         double distance = marker.startPos.distanceTo(cameraPos);
 
-        // 距离自适应大小：越远越大，但有最小值（与点标记相同的逻辑）
-        float minDistance = 32.0f;
-        float maxDistance = 640.0f;
-        float minScale = 1f;
-        float maxScale = 5f;
-
-        float distanceFactor = (float) Math.min(1.0, Math.max(0.0, (distance - minDistance) / (maxDistance - minDistance)));
-        float scale = minScale + (maxScale - minScale) * distanceFactor;
+        float scale = calculateConstantScreenSizeScale(distance);
 
         float x = (float) marker.startPos.x;
         float y = (float) (marker.startPos.y + 0.5);
