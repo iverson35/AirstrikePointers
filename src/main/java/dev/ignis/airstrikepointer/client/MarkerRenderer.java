@@ -141,12 +141,12 @@ public class MarkerRenderer {
 
         MultiBufferSource.BufferSource bufferSource = mc.renderBuffers().bufferSource();
 
-        // 渲染路径标记（在点标记之前，避免遮挡�?
+        // 渲染路径标记（在点标记之前，避免遮挡�?
         for (ClientPathMarker marker : pathMarkers.values()) {
             renderPathMarker(poseStack, bufferSource, marker);
         }
 
-        // 渲染坐标点标�?
+        // 渲染坐标点标�?
         for (ClientPointMarker marker : pointMarkers.values()) {
             renderPointMarker(poseStack, bufferSource, marker);
         }
@@ -160,7 +160,7 @@ public class MarkerRenderer {
         Vec3 cameraPos = mc.gameRenderer.getMainCamera().getPosition();
         double distance = marker.position.distanceTo(cameraPos);
 
-        // 距离自适应大小：越远越大，但有最小�?
+        // 距离自适应大小：越远越大，但有最小�?
         float minDistance = 32.0f;
         float maxDistance = 640.0f;
         float minScale = 1f;
@@ -215,7 +215,7 @@ public class MarkerRenderer {
         float g = ((marker.color >> 8) & 0xFF) / 255f;
         float b = (marker.color & 0xFF) / 255f;
 
-        // 如果路径未完成（只有起点），在起点渲染一个标�?
+        // 如果路径未完成（只有起点），在起点渲染一个标记
         if (marker.endPos == null) {
             renderPathStartMarker(poseStack, bufferSource, marker, cameraPos, r, g, b);
             return;
@@ -225,7 +225,7 @@ public class MarkerRenderer {
         Vec3 midPoint = marker.startPos.add(marker.endPos).scale(0.5);
         double distance = midPoint.distanceTo(cameraPos);
 
-        // 距离自适应宽度�?4m以下5格，64+640m�?5�?
+        // 距离自适应宽度
         float minDistance = 64.0f;
         float maxDistance = 704.0f; // 64 + 640
         float minWidth = 5.0f;
@@ -254,18 +254,18 @@ public class MarkerRenderer {
         PoseStack.Pose pose = poseStack.last();
 
         // 翻页动画偏移
-        float uOffset = -(marker.age % 100) / 100f; // 负号使动画方向正�?
+        float uOffset = -(marker.age % 100) / 100f; // 负号使动画方向正确
         float alpha = 0.7f;
 
         // 绘制平面路径条带
-        // 宽度方向始终显示一个完整纹理（V: 0-1�?
+        // 宽度方向始终显示一个完整纹理（V: 0-1)
         // 长度方向纹理以相同比例放大：纹理宽度 = 路径宽度，保持正方形比例
-        // 即：长度方向�?width"米重复一次纹�?
+        // 即：长度方向"width"米重复一次纹理
         float textureRepeat = 0.5f / width; // 每米对应的纹理重复量
         float u1 = uOffset;
         float u2 = length * textureRepeat + uOffset;
 
-        // V坐标始终�?0-1，不随宽度变�?
+        // V坐标始终为0-1，不随宽度变化
         vertex(vertexConsumer, pose, -width, 0.05f, 0, u1, 1, r, g, b, alpha);
         vertex(vertexConsumer, pose, -width, 0.05f, length, u2, 1, r, g, b, alpha);
         vertex(vertexConsumer, pose, width, 0.05f, length, u2, 0, r, g, b, alpha);
@@ -277,7 +277,7 @@ public class MarkerRenderer {
     private static void renderPathStartMarker(PoseStack poseStack, MultiBufferSource bufferSource, ClientPathMarker marker, Vec3 cameraPos, float r, float g, float b) {
         double distance = marker.startPos.distanceTo(cameraPos);
 
-        // 距离自适应大小：越远越大，但有最小值（与点标记相同的逻辑�?
+        // 距离自适应大小：越远越大，但有最小值（与点标记相同的逻辑）
         float minDistance = 32.0f;
         float maxDistance = 640.0f;
         float minScale = 1f;
