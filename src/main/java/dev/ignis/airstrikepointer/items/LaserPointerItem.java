@@ -242,6 +242,22 @@ public class LaserPointerItem extends Item {
         }
     }
 
+    // High-visibility color palette for unteamed players
+    private static final int[] MARKER_COLORS = {
+            0xFF5555, // Red
+            0xFFAA00, // Gold
+            0xFFFF55, // Yellow
+            0x55FF55, // Green
+            0x55FFFF, // Aqua
+            0x5555FF, // Blue
+            0xFF55FF, // Light Purple
+            0xFF8800, // Orange
+            0x00FF88, // Mint
+            0xFF0088, // Pink
+            0x88FF00, // Lime
+            0x0088FF  // Sky Blue
+    };
+
     private static int getPlayerColor(Player player) {
         Team team = player.getTeam();
         if (team != null && team.getColor() != ChatFormatting.RESET) {
@@ -251,11 +267,9 @@ public class LaserPointerItem extends Item {
             }
         }
 
-        int hash = player.getUUID().hashCode();
-        int r = 64 + (Math.abs(hash) % 192);
-        int g = 64 + (Math.abs(hash >> 8) % 192);
-        int b = 64 + (Math.abs(hash >> 16) % 192);
-        return (r << 16) | (g << 8) | b;
+        // Use UUID hash to select from predefined high-visibility colors
+        int index = Math.abs(player.getUUID().hashCode()) % MARKER_COLORS.length;
+        return MARKER_COLORS[index];
     }
 
     private static String getPlayerTeamName(Player player) {
