@@ -8,11 +8,11 @@ import dev.ignis.airstrikepointer.network.CreatePathMarkerPacket;
 import dev.ignis.airstrikepointer.network.CreatePointMarkerPacket;
 import dev.ignis.airstrikepointer.network.UpdatePointMarkerPacket;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
@@ -66,9 +66,20 @@ public class MarkerRenderer {
     private static final Map<UUID, ClientPointMarker> pointMarkers = new HashMap<>();
     private static final Map<UUID, ClientPathMarker> pathMarkers = new HashMap<>();
 
+    // 实体位置缓存：每渲染tick只遍历一次实体列表
+    private static final Map<UUID, Vec3> entityPositionCache = new HashMap<>();
+    private static final Set<UUID> trackedEntityIds = new HashSet<>();
+    private static int lastCacheUpdateTick = -1;
+
     public static void addPointMarker(CreatePointMarkerPacket packet) {
         if (shouldShowMarker(packet.ownerId(), packet.teamName())) {
-            pointMarkers.put(packet.markerId(), new ClientPointMarker(packet));
+            ClientPointMarker marker = new ClientPointMarker(packet);
+            pointMarkers.put(packet.markerId(), marker);
+
+            // 添加到追踪列表
+            if (marker.targetEntityId != null) {
+                trackedEntityIds.add(marker.targetEntityId);
+            }
         }
     }
 
@@ -87,20 +98,46 @@ public class MarkerRenderer {
     }
 
     public static void clearMarkersByOwner(UUID ownerId) {
-        pointMarkers.values().removeIf(m -> m.ownerId.equals(ownerId));
+        pointMarkers.values().removeIf(m -> {
+            if (m.ownerId.equals(ownerId)) {
+                // 清理追踪
+                if (m.targetEntityId != null) {
+                    boolean stillTracked = pointMarkers.values().stream()
+                            .filter(other -> !other.ownerId.equals(ownerId))
+                            .anyMatch(other -> m.targetEntityId.equals(other.targetEntityId));
+                    if (!stillTracked) {
+                        trackedEntityIds.remove(m.targetEntityId);
+                        entityPositionCache.remove(m.targetEntityId);
+                    }
+                }
+                return true;
+            }
+            return false;
+        });
         pathMarkers.values().removeIf(m -> m.ownerId.equals(ownerId));
     }
 
     public static void clearAllMarkers() {
         pointMarkers.clear();
         pathMarkers.clear();
+        trackedEntityIds.clear();
+        entityPositionCache.clear();
     }
 
     public static void removeMarker(UUID markerId, boolean isPathMarker) {
         if (isPathMarker) {
             pathMarkers.remove(markerId);
         } else {
-            pointMarkers.remove(markerId);
+            ClientPointMarker removed = pointMarkers.remove(markerId);
+            if (removed != null && removed.targetEntityId != null) {
+                // 检查是否还有其他标记追踪同一个实体
+                boolean stillTracked = pointMarkers.values().stream()
+                        .anyMatch(m -> removed.targetEntityId.equals(m.targetEntityId));
+                if (!stillTracked) {
+                    trackedEntityIds.remove(removed.targetEntityId);
+                    entityPositionCache.remove(removed.targetEntityId);
+                }
+            }
         }
     }
 
@@ -129,14 +166,41 @@ public class MarkerRenderer {
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.level != null) {
+            // 更新实体位置缓存（每tick只遍历一次）
+            updateEntityPositionCache(mc.level);
+
             for (ClientPointMarker marker : pointMarkers.values()) {
-                marker.tick(mc.level);
+                marker.tick();
             }
             pointMarkers.values().removeIf(ClientPointMarker::isExpired);
         } else {
             pointMarkers.values().removeIf(ClientPointMarker::tickWithoutLevel);
         }
         pathMarkers.values().removeIf(ClientPathMarker::tick);
+    }
+
+    /**
+     * 每tick只遍历一次实体列表，更新所有追踪实体的位置缓存
+     */
+    private static void updateEntityPositionCache(Level level) {
+        if (trackedEntityIds.isEmpty()) return;
+
+        entityPositionCache.clear();
+
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return;
+
+        Vec3 playerPos = mc.player.position();
+        // 以玩家为中心，100格半径的AABB
+        net.minecraft.world.phys.AABB searchArea = new net.minecraft.world.phys.AABB(
+                playerPos.x - 100, playerPos.y - 100, playerPos.z - 100,
+                playerPos.x + 100, playerPos.y + 100, playerPos.z + 100);
+
+        for (var entity : level.getEntities(null, searchArea)) {
+            if (trackedEntityIds.contains(entity.getUUID())) {
+                entityPositionCache.put(entity.getUUID(), entity.position());
+            }
+        }
     }
 
     @SubscribeEvent
@@ -345,17 +409,17 @@ public class MarkerRenderer {
             this.targetEntityId = packet.targetEntityId();
         }
 
-        void tick(net.minecraft.world.level.Level level) {
+        void tick() {
             remainingTicks--;
             age++;
 
-            // 客户端本地追踪实体位置
-            if (targetEntityId != null && level.isClientSide()) {
-                ((ClientLevel)level)
-                if (entity != null) {
-                    position = entity.position();
+            // 客户端本地追踪实体位置（从缓存读取）
+            if (targetEntityId != null) {
+                Vec3 cachedPos = entityPositionCache.get(targetEntityId);
+                if (cachedPos != null) {
+                    position = cachedPos;
                 } else {
-                    // 实体不存在，使用服务器同步的位置
+                    // 实体不存在或不在缓存中，使用服务器同步的位置
                     position = serverSyncedPosition;
                 }
             }
