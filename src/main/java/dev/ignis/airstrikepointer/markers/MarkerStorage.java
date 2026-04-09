@@ -89,7 +89,7 @@ public class MarkerStorage extends SavedData {
         incrementPlayerCount(ownerId);
         setDirty();
 
-        broadcastToAll(new CreatePointMarkerPacket(markerId, ownerId, position, color, teamName, lifetimeTicks, targetType, entityName));
+        broadcastToAll(new CreatePointMarkerPacket(markerId, ownerId, position, color, teamName, lifetimeTicks, targetType, entityName, targetEntityId));
         broadcastMarkerNotification(marker, playerName, targetType, entityName);
         return marker;
     }
@@ -216,7 +216,8 @@ public class MarkerStorage extends SavedData {
         for (PointMarker marker : pointMarkers.values()) {
             pointData.add(new SyncMarkersPacket.PointMarkerData(
                     marker.getMarkerId(), marker.getOwnerId(), marker.getPosition(),
-                    marker.getColor(), marker.getTeamName(), marker.getRemainingTicks()
+                    marker.getColor(), marker.getTeamName(), marker.getRemainingTicks(),
+                    marker.getTargetEntityId()
             ));
         }
 

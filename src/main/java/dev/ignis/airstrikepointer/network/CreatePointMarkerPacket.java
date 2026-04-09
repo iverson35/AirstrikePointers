@@ -16,7 +16,8 @@ public record CreatePointMarkerPacket(
         String teamName,
         int lifetimeTicks,
         int targetType, // 0=miss, 1=block, 2=entity
-        String entityName // 当targetType=2时的实体显示名称
+        String entityName, // 当targetType=2时的实体显示名称
+        UUID targetEntityId // 当targetType=2时的实体UUID
 ) {
     public static final int TARGET_MISS = 0;
     public static final int TARGET_BLOCK = 1;
@@ -33,6 +34,7 @@ public record CreatePointMarkerPacket(
         buf.writeInt(lifetimeTicks);
         buf.writeInt(targetType);
         buf.writeUtf(entityName != null ? entityName : "");
+        buf.writeUUID(targetEntityId);
     }
 
     public static CreatePointMarkerPacket decode(FriendlyByteBuf buf) {
@@ -44,7 +46,8 @@ public record CreatePointMarkerPacket(
                 buf.readUtf(),
                 buf.readInt(),
                 buf.readInt(),
-                buf.readUtf()
+                buf.readUtf(),
+                buf.readUUID()
         );
     }
 

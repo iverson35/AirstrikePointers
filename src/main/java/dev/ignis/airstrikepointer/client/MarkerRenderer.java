@@ -8,6 +8,7 @@ import dev.ignis.airstrikepointer.network.CreatePathMarkerPacket;
 import dev.ignis.airstrikepointer.network.CreatePointMarkerPacket;
 import dev.ignis.airstrikepointer.network.UpdatePointMarkerPacket;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
@@ -75,6 +76,7 @@ public class MarkerRenderer {
         ClientPointMarker marker = pointMarkers.get(packet.markerId());
         if (marker != null) {
             marker.position = packet.position();
+            marker.serverSyncedPosition = packet.position();
         }
     }
 
@@ -125,7 +127,15 @@ public class MarkerRenderer {
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
 
-        pointMarkers.values().removeIf(ClientPointMarker::tick);
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level != null) {
+            for (ClientPointMarker marker : pointMarkers.values()) {
+                marker.tick(mc.level);
+            }
+            pointMarkers.values().removeIf(ClientPointMarker::isExpired);
+        } else {
+            pointMarkers.values().removeIf(ClientPointMarker::tickWithoutLevel);
+        }
         pathMarkers.values().removeIf(ClientPathMarker::tick);
     }
 
@@ -315,7 +325,9 @@ public class MarkerRenderer {
     private static class ClientPointMarker {
         final UUID markerId;
         final UUID ownerId;
+        final UUID targetEntityId;
         Vec3 position;
+        Vec3 serverSyncedPosition;
         final int color;
         final String teamName;
         int remainingTicks;
@@ -325,13 +337,35 @@ public class MarkerRenderer {
             this.markerId = packet.markerId();
             this.ownerId = packet.ownerId();
             this.position = packet.position();
+            this.serverSyncedPosition = packet.position();
             this.color = packet.color();
             this.teamName = packet.teamName();
             this.remainingTicks = packet.lifetimeTicks();
             this.age = 0;
+            this.targetEntityId = packet.targetEntityId();
         }
 
-        boolean tick() {
+        void tick(net.minecraft.world.level.Level level) {
+            remainingTicks--;
+            age++;
+
+            // 客户端本地追踪实体位置
+            if (targetEntityId != null && level.isClientSide()) {
+                ((ClientLevel)level)
+                if (entity != null) {
+                    position = entity.position();
+                } else {
+                    // 实体不存在，使用服务器同步的位置
+                    position = serverSyncedPosition;
+                }
+            }
+        }
+
+        boolean isExpired() {
+            return remainingTicks <= 0;
+        }
+
+        boolean tickWithoutLevel() {
             remainingTicks--;
             age++;
             return remainingTicks <= 0;

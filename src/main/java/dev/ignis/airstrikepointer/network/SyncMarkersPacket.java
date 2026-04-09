@@ -16,7 +16,8 @@ public record SyncMarkersPacket(
 ) {
     public record PointMarkerData(
             UUID markerId, UUID ownerId, Vec3 position,
-            int color, String teamName, int remainingTicks
+            int color, String teamName, int remainingTicks,
+            UUID targetEntityId
     ) {}
 
     public record PathMarkerData(
@@ -35,6 +36,7 @@ public record SyncMarkersPacket(
             buf.writeInt(data.color);
             buf.writeUtf(data.teamName);
             buf.writeInt(data.remainingTicks);
+            buf.writeUUID(data.targetEntityId);
         }
 
         buf.writeInt(pathMarkers.size());
@@ -64,7 +66,8 @@ public record SyncMarkersPacket(
             points.add(new PointMarkerData(
                     buf.readUUID(), buf.readUUID(),
                     new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble()),
-                    buf.readInt(), buf.readUtf(), buf.readInt()
+                    buf.readInt(), buf.readUtf(), buf.readInt(),
+                    buf.readUUID()
             ));
         }
 
@@ -94,7 +97,7 @@ public record SyncMarkersPacket(
                 MarkerRenderer.addPointMarker(new CreatePointMarkerPacket(
                         data.markerId, data.ownerId, data.position,
                         data.color, data.teamName, data.remainingTicks,
-                        CreatePointMarkerPacket.TARGET_BLOCK, ""
+                        CreatePointMarkerPacket.TARGET_BLOCK, "", data.targetEntityId
                 ));
             }
             for (PathMarkerData data : pathMarkers) {
