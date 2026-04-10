@@ -18,6 +18,7 @@ import javax.annotation.Nonnull;
 import java.util.*;
 
 public class MarkerStorage extends SavedData {
+    public static final String TRACKED_TAG_NAME = "airstrikepointers:tracked";
     private static final String DATA_NAME = AirstrikePointers.MODID + "_markers";
     private final Map<UUID, PointMarker> pointMarkers = new HashMap<>();
     private final Map<UUID, PathMarker> pathMarkers = new HashMap<>();
@@ -89,6 +90,15 @@ public class MarkerStorage extends SavedData {
         incrementPlayerCount(ownerId);
         setDirty();
 
+        // 如果是实体标记，为实体添加PersistentData
+        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+        if (server != null && targetEntityId != null) {
+            var entity = server.overworld().getEntity(targetEntityId);
+            if (entity != null) {
+                entity.getPersistentData().putBoolean(TRACKED_TAG_NAME, true);
+            }
+        }
+
         broadcastToAll(new CreatePointMarkerPacket(markerId, ownerId, position, color, teamName, lifetimeTicks, targetType, entityName, targetEntityId));
         broadcastMarkerNotification(marker, playerName, targetType, entityName);
         return marker;
@@ -155,6 +165,7 @@ public class MarkerStorage extends SavedData {
         List<UUID> expiredPointMarkers = new ArrayList<>();
         List<UUID> expiredPathMarkers = new ArrayList<>();
         List<PointMarker> updatedEntityMarkers = new ArrayList<>();
+        List<PointMarker> removedEntityMarkers = new ArrayList<>();
 
         // Update entity-tracking markers every 10 ticks
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
@@ -166,6 +177,9 @@ public class MarkerStorage extends SavedData {
                         marker.setPosition(entity.position());
                         updatedEntityMarkers.add(marker);
                         changed = true;
+                    } else {
+                        // 实体消失，记录以便清理PersistentData
+                        removedEntityMarkers.add(marker);
                     }
                 }
             }
@@ -175,6 +189,10 @@ public class MarkerStorage extends SavedData {
         while (pointIter.hasNext()) {
             PointMarker marker = pointIter.next();
             if (marker.tick()) {
+                // 如果是实体标记，记录以便清理PersistentData
+                if (marker.isTrackingEntity()) {
+                    removedEntityMarkers.add(marker);
+                }
                 pointIter.remove();
                 decrementPlayerCount(marker.getOwnerId());
                 expiredPointMarkers.add(marker.getMarkerId());
@@ -204,6 +222,23 @@ public class MarkerStorage extends SavedData {
         // 通知客户端更新实体标记位置
         for (PointMarker marker : updatedEntityMarkers) {
             broadcastToAll(new UpdatePointMarkerPacket(marker.getMarkerId(), marker.getPosition()));
+        }
+
+        // 清理实体的PersistentData
+        if (server != null && !removedEntityMarkers.isEmpty()) {
+            for (PointMarker marker : removedEntityMarkers) {
+                if (marker.getTargetEntityId() != null) {
+                    // 检查是否还有其他标记追踪同一个实体
+                    boolean stillTracked = pointMarkers.values().stream()
+                            .anyMatch(m -> m.isTrackingEntity() && m.getTargetEntityId().equals(marker.getTargetEntityId()));
+                    if (!stillTracked) {
+                        var entity = server.overworld().getEntity(marker.getTargetEntityId());
+                        if (entity != null) {
+                            entity.getPersistentData().remove(TRACKED_TAG_NAME);
+                        }
+                    }
+                }
+            }
         }
 
         if (changed) {
