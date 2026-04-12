@@ -13,6 +13,7 @@ import net.minecraftforge.server.ServerLifecycleHooks;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 public class GuidanceSystem {
     private static final GuidanceSystem INSTANCE = new GuidanceSystem();
@@ -57,7 +58,7 @@ public class GuidanceSystem {
         // 更新制导实体类型缓存
         updateGuidanceEntityTypes();
 
-        double horizontalRange = Config.GUIDANCE_HORIZONTAL_RANGE.get();
+        double horizontalRange = Config.GUIDANCE_HORIZONTAL_RANGE.get() / 2.0;
         double verticalRange = Config.GUIDANCE_VERTICAL_RANGE.get() / 2.0;
         double verticalOffset = Config.GUIDANCE_VERTICAL_OFFSET.get();
         double guidanceRatio = Config.GUIDANCE_RATIO.get();
@@ -89,7 +90,7 @@ public class GuidanceSystem {
                 });
 
                 for (Entity projectile : projectiles) {
-                    applyGuidance(projectile, marker.getPosition(), guidanceRatio);
+                    applyGuidance(projectile, marker.getPosition(), guidanceRatio, marker.getMarkerId());
                 }
             }
         }
@@ -113,15 +114,34 @@ public class GuidanceSystem {
         entityListDirty = false;
     }
 
-    private void applyGuidance(Entity projectile, Vec3 targetPos, double ratio) {
+    private static final String GUIDANCE_MARKER_TAG = "airstrikepointers:guided_by";
+    private static final double MIN_SPEED = 0.1;
+
+    private void applyGuidance(Entity projectile, Vec3 targetPos, double ratio, UUID markerId) {
+        // 检查是否已被其他标记制导
+        if (projectile.getPersistentData().hasUUID(GUIDANCE_MARKER_TAG)) {
+            UUID currentMarker = projectile.getPersistentData().getUUID(GUIDANCE_MARKER_TAG);
+            if (!currentMarker.equals(markerId)) {
+                return; // 已被其他标记制导，跳过
+            }
+        } else {
+            // 首次制导，记录标记ID
+            projectile.getPersistentData().putUUID(GUIDANCE_MARKER_TAG, markerId);
+        }
+
         Vec3 currentVel = projectile.getDeltaMovement();
         Vec3 toTarget = targetPos.subtract(projectile.position()).normalize();
 
-        // 新速度 = 原速度 * (1 - ratio) + 目标方向 * 原速度长度 * ratio
-        double speed = currentVel.length();
-        if (speed < 0.01) return;
-
+        // 新速度 = 原速度 * (1 - ratio) + 目标方向 * 速度 * ratio
+        double speed = Math.max(currentVel.length(), MIN_SPEED);
+        
         Vec3 newVel = currentVel.scale(1 - ratio).add(toTarget.scale(speed * ratio));
+        
+        // 保证最小速度
+        if (newVel.length() < MIN_SPEED) {
+            newVel = newVel.normalize().scale(MIN_SPEED);
+        }
+        
         projectile.setDeltaMovement(newVel);
 
         // 同步到客户端

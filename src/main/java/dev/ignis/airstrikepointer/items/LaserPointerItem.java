@@ -1,5 +1,6 @@
 package dev.ignis.airstrikepointer.items;
 
+import dev.ignis.airstrikepointer.Config;
 import dev.ignis.airstrikepointer.markers.MarkerStorage;
 import dev.ignis.airstrikepointer.network.*;
 import net.minecraft.ChatFormatting;
@@ -118,7 +119,24 @@ public class LaserPointerItem extends Item {
             if (player.isShiftKeyDown()) {
                 return;
             }
+            
+            // 检查冷却（路径模式标记起点时不检查冷却）
+            Mode mode = getMode(stack);
+            boolean isPathStart = (mode == Mode.PATH && getPathMarkerId(stack) == null);
+            
+            int cooldownTicks = Config.MARKER_COOLDOWN_TICKS.get();
+            if (cooldownTicks > 0 && !isPathStart && player.getCooldowns().isOnCooldown(this)) {
+                player.displayClientMessage(Component.translatable("message.airstrikepointers.cooldown_active").withStyle(ChatFormatting.RED), true);
+                return;
+            }
+            
             performMarking(player, stack);
+            
+            // 添加冷却（路径模式标记起点时不添加冷却）
+            if (cooldownTicks > 0 && !isPathStart) {
+                player.getCooldowns().addCooldown(this, cooldownTicks);
+            }
+            
             // 播放结束使用声音 (note block)
             level.playSound(null, player.getX(), player.getY(), player.getZ(),
                     net.minecraft.sounds.SoundEvents.NOTE_BLOCK_BIT.value(),

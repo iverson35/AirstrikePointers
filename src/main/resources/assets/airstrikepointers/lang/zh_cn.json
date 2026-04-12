@@ -17,5 +17,6 @@
   "message.airstrikepointers.markers_cleared": "已清除所有标记",
   "message.airstrikepointers.marker_notification": "标记了一个位置",
   "message.airstrikepointers.entity_target": "目标: %s",
-  "message.airstrikepointers.path_info": "[%s, %s, %s] -> [%s, %s, %s] 航向%s°"
+  "message.airstrikepointers.path_info": "[%s, %s, %s] -> [%s, %s, %s] 航向%s°",
+  "message.airstrikepointers.cooldown_active": "冷却中"
 }

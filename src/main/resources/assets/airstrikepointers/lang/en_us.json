@@ -17,5 +17,6 @@
   "message.airstrikepointers.markers_cleared": "All markers cleared",
   "message.airstrikepointers.marker_notification": "marked a location",
   "message.airstrikepointers.entity_target": "Target: %s",
-  "message.airstrikepointers.path_info": "[%s, %s, %s] -> [%s, %s, %s] Heading %s°"
+  "message.airstrikepointers.path_info": "[%s, %s, %s] -> [%s, %s, %s] Heading %s°",
+  "message.airstrikepointers.cooldown_active": "Cooldown active"
 }

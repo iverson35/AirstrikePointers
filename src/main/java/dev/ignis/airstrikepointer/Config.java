@@ -17,6 +17,10 @@ public class Config {
             .comment("Marker lifetime in seconds")
             .defineInRange("markerLifetimeSeconds", 30, 5, 300);
 
+    public static final ForgeConfigSpec.IntValue MARKER_COOLDOWN_TICKS = BUILDER
+            .comment("Cooldown between marker uses in ticks (20 ticks = 1 second, 0 = no cooldown)")
+            .defineInRange("markerCooldownTicks", 100, 0, 600);
+
     // Guidance System Config
     public static final ForgeConfigSpec.BooleanValue GUIDANCE_ENABLED = BUILDER
             .comment("Enable guidance system for tracked entities")
