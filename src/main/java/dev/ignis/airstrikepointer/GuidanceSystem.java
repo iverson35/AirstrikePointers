@@ -24,10 +24,24 @@ public class GuidanceSystem {
     private int tickCounter = 0;
     private Set<ResourceLocation> guidanceEntityTypes = new HashSet<>();
     private boolean entityListDirty = true;
+    
+    // CBC 支持
+    private final boolean cbcInstalled;
+    private final Class<?> cbcProjectileClass;
 
     private GuidanceSystem() {
         // 注册配置重载回调
         Config.setOnReload(() -> entityListDirty = true);
+        
+        // 检测 CBC 是否安装
+        Class<?> cbcClass = null;
+        try {
+            cbcClass = Class.forName("rbasamoyai.createbigcannons.munitions.big_cannon.AbstractBigCannonProjectile");
+        } catch (ClassNotFoundException e) {
+            // CBC 未安装
+        }
+        cbcInstalled = cbcClass != null;
+        cbcProjectileClass = cbcClass;
     }
 
     public void tick() {
@@ -61,9 +75,17 @@ public class GuidanceSystem {
                         targetPos.x + horizontalRange, targetPos.y + verticalRange, targetPos.z + horizontalRange
                 );
 
+                boolean guideCbcShells = cbcInstalled && Config.GUIDANCE_GUIDE_CBC_SHELLS.get();
+                
                 List<Entity> projectiles = level.getEntities((Entity) null, searchArea, entity -> {
+                    // 检查是否在配置列表中
                     ResourceLocation entityId = net.minecraftforge.registries.ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
-                    return guidanceEntityTypes.contains(entityId);
+                    if (guidanceEntityTypes.contains(entityId)) return true;
+                    
+                    // 检查是否是 CBC 炮弹
+                    if (guideCbcShells && cbcProjectileClass.isInstance(entity)) return true;
+                    
+                    return false;
                 });
 
                 for (Entity projectile : projectiles) {

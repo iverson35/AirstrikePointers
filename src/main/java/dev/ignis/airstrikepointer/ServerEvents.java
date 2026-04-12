@@ -15,9 +15,10 @@ public class ServerEvents {
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
 
-        // 遍历所有维度，更新标记
-        for (ServerLevel level : event.getServer().getAllLevels()) {
-            MarkerStorage.get(level).tick();
+        // 只在主世界执行标记tick（避免多维度重复递减）
+        ServerLevel overworld = event.getServer().overworld();
+        if (overworld != null) {
+            MarkerStorage.get(overworld).tick();
         }
         
         // 制导系统tick

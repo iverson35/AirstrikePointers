@@ -46,6 +46,10 @@ public class Config {
             .comment("Guidance ratio (0.0-1.0), how much velocity is redirected toward target")
             .defineInRange("guidance.ratio", 0.1, 0.0, 1.0);
 
+    public static final ForgeConfigSpec.BooleanValue GUIDANCE_GUIDE_CBC_SHELLS = BUILDER
+            .comment("Guide all Create Big Cannons shells (AbstractBigCannonProjectile), regardless of config list")
+            .define("guidance.guideCbcShells", false);
+
     static final ForgeConfigSpec SPEC = BUILDER.build();
 
     private static final ForgeConfigSpec.Builder CLIENT_BUILDER = new ForgeConfigSpec.Builder();
