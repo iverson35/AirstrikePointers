@@ -120,20 +120,21 @@ public class LaserPointerItem extends Item {
                 return;
             }
             
-            // 检查冷却（路径模式标记起点时不检查冷却）
+            // 检查冷却（路径模式标记起点和清除模式时不检查冷却）
             Mode mode = getMode(stack);
             boolean isPathStart = (mode == Mode.PATH && getPathMarkerId(stack) == null);
+            boolean isClearMode = (mode == Mode.CLEAR);
             
             int cooldownTicks = Config.MARKER_COOLDOWN_TICKS.get();
-            if (cooldownTicks > 0 && !isPathStart && player.getCooldowns().isOnCooldown(this)) {
+            if (cooldownTicks > 0 && !isPathStart && !isClearMode && player.getCooldowns().isOnCooldown(this)) {
                 player.displayClientMessage(Component.translatable("message.airstrikepointers.cooldown_active").withStyle(ChatFormatting.RED), true);
                 return;
             }
             
             performMarking(player, stack);
             
-            // 添加冷却（路径模式标记起点时不添加冷却）
-            if (cooldownTicks > 0 && !isPathStart) {
+            // 添加冷却（路径模式标记起点和清除模式时不添加冷却）
+            if (cooldownTicks > 0 && !isPathStart && !isClearMode) {
                 player.getCooldowns().addCooldown(this, cooldownTicks);
             }
             
