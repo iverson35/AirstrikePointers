@@ -34,21 +34,23 @@ public record CreatePointMarkerPacket(
         buf.writeInt(lifetimeTicks);
         buf.writeInt(targetType);
         buf.writeUtf(entityName != null ? entityName : "");
-        buf.writeUUID(targetEntityId);
+        buf.writeBoolean(targetEntityId != null);
+        if (targetEntityId != null) {
+            buf.writeUUID(targetEntityId);
+        }
     }
 
     public static CreatePointMarkerPacket decode(FriendlyByteBuf buf) {
-        return new CreatePointMarkerPacket(
-                buf.readUUID(),
-                buf.readUUID(),
-                new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble()),
-                buf.readInt(),
-                buf.readUtf(),
-                buf.readInt(),
-                buf.readInt(),
-                buf.readUtf(),
-                buf.readUUID()
-        );
+        UUID markerId = buf.readUUID();
+        UUID ownerId = buf.readUUID();
+        Vec3 position = new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble());
+        int color = buf.readInt();
+        String teamName = buf.readUtf();
+        int lifetimeTicks = buf.readInt();
+        int targetType = buf.readInt();
+        String entityName = buf.readUtf();
+        UUID targetEntityId = buf.readBoolean() ? buf.readUUID() : null;
+        return new CreatePointMarkerPacket(markerId, ownerId, position, color, teamName, lifetimeTicks, targetType, entityName, targetEntityId);
     }
 
     public void handle(Supplier<NetworkEvent.Context> ctx) {

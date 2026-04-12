@@ -36,7 +36,10 @@ public record SyncMarkersPacket(
             buf.writeInt(data.color);
             buf.writeUtf(data.teamName);
             buf.writeInt(data.remainingTicks);
-            buf.writeUUID(data.targetEntityId);
+            buf.writeBoolean(data.targetEntityId != null);
+            if (data.targetEntityId != null) {
+                buf.writeUUID(data.targetEntityId);
+            }
         }
 
         buf.writeInt(pathMarkers.size());
@@ -63,12 +66,14 @@ public record SyncMarkersPacket(
         int pointCount = buf.readInt();
         List<PointMarkerData> points = new ArrayList<>(pointCount);
         for (int i = 0; i < pointCount; i++) {
-            points.add(new PointMarkerData(
-                    buf.readUUID(), buf.readUUID(),
-                    new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble()),
-                    buf.readInt(), buf.readUtf(), buf.readInt(),
-                    buf.readUUID()
-            ));
+            UUID markerId = buf.readUUID();
+            UUID ownerId = buf.readUUID();
+            Vec3 position = new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble());
+            int color = buf.readInt();
+            String teamName = buf.readUtf();
+            int remainingTicks = buf.readInt();
+            UUID targetEntityId = buf.readBoolean() ? buf.readUUID() : null;
+            points.add(new PointMarkerData(markerId, ownerId, position, color, teamName, remainingTicks, targetEntityId));
         }
 
         int pathCount = buf.readInt();

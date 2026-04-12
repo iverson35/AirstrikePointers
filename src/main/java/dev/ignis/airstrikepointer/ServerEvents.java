@@ -19,6 +19,9 @@ public class ServerEvents {
         for (ServerLevel level : event.getServer().getAllLevels()) {
             MarkerStorage.get(level).tick();
         }
+        
+        // 制导系统tick
+        GuidanceSystem.getInstance().tick();
     }
 
     @SubscribeEvent
