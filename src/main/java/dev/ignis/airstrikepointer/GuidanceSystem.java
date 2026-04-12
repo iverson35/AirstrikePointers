@@ -23,6 +23,12 @@ public class GuidanceSystem {
     
     private int tickCounter = 0;
     private Set<ResourceLocation> guidanceEntityTypes = new HashSet<>();
+    private boolean entityListDirty = true;
+
+    private GuidanceSystem() {
+        // 注册配置重载回调
+        Config.setOnReload(() -> entityListDirty = true);
+    }
 
     public void tick() {
         if (!Config.GUIDANCE_ENABLED.get()) return;
@@ -69,8 +75,8 @@ public class GuidanceSystem {
 
     @SuppressWarnings("removal")
     private void updateGuidanceEntityTypes() {
-        // 每100tick更新一次缓存
-        if (tickCounter % 100 != 1) return;
+        // 每100tick更新一次缓存，或配置被重载时
+        if (!entityListDirty && tickCounter % 100 != 1) return;
 
         guidanceEntityTypes.clear();
         List<String> entityList = Config.GUIDANCE_ENTITY_LIST.get();
@@ -82,6 +88,7 @@ public class GuidanceSystem {
                 // 无效的实体ID，忽略
             }
         }
+        entityListDirty = false;
     }
 
     private void applyGuidance(Entity projectile, Vec3 targetPos, double ratio) {

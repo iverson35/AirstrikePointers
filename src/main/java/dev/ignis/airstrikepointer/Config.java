@@ -1,7 +1,11 @@
 package dev.ignis.airstrikepointer;
 
 import net.minecraftforge.common.ForgeConfigSpec;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.config.ModConfigEvent;
 
+@Mod.EventBusSubscriber(modid = AirstrikePointers.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class Config {
     private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
 
@@ -55,4 +59,25 @@ public class Config {
             .define("showUnteamMarkers", true);
 
     static final ForgeConfigSpec CLIENT_SPEC = CLIENT_BUILDER.build();
+
+    // 配置重载回调
+    private static Runnable onReload = () -> {};
+
+    public static void setOnReload(Runnable callback) {
+        onReload = callback;
+    }
+
+    @SubscribeEvent
+    public static void onConfigReload(ModConfigEvent.Reloading event) {
+        if (event.getConfig().getSpec() == SPEC || event.getConfig().getSpec() == CLIENT_SPEC) {
+            onReload.run();
+        }
+    }
+
+    @SubscribeEvent
+    public static void onConfigLoad(ModConfigEvent.Loading event) {
+        if (event.getConfig().getSpec() == SPEC || event.getConfig().getSpec() == CLIENT_SPEC) {
+            onReload.run();
+        }
+    }
 }
