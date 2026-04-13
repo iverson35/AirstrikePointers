@@ -40,7 +40,7 @@ public class Config {
 
     public static final ForgeConfigSpec.ConfigValue<java.util.List<String>> GUIDANCE_ENTITY_LIST = BUILDER
             .comment("List of entity IDs that can be guided (e.g., [\"minecraft:arrow\", \"minecraft:snowball\"])")
-            .define("guidance.entityList", java.util.Arrays.asList("minecraft:arrow", "minecraft:snowball", "minecraft:egg", "minecraft:trident"));
+            .define("guidance.entityList", java.util.Arrays.asList("minecraft:arrow"));
 
     public static final ForgeConfigSpec.IntValue GUIDANCE_INTERVAL = BUILDER
             .comment("Guidance interval in ticks (1 = every tick)")
