@@ -1,6 +1,7 @@
 package dev.ignis.airstrikepointer;
 
 import dev.ignis.airstrikepointer.items.LaserPointerItem;
+import dev.ignis.airstrikepointer.items.ModItems;
 import dev.ignis.airstrikepointer.markers.MarkerStorage;
 import dev.ignis.airstrikepointer.network.NetworkHandler;
 import dev.ignis.airstrikepointer.network.RequestClearMarkersPacket;
@@ -65,6 +66,8 @@ public class ServerEvents {
                 // 清除标记
                 MarkerStorage.get(player.level()).clearMarkersByOwner(player.getUUID());
                 player.displayClientMessage(Component.translatable("message.airstrikepointers.markers_cleared").withStyle(ChatFormatting.GREEN), true);
+                // 清除冷却，让指示器立即可用
+                player.getCooldowns().removeCooldown(ModItems.LASER_POINTER.get());
             }
         }
     }
@@ -79,6 +82,8 @@ public class ServerEvents {
                 // 清除标记
                 MarkerStorage.get(player.level()).clearMarkersByOwner(player.getUUID());
                 player.displayClientMessage(Component.translatable("message.airstrikepointers.markers_cleared").withStyle(ChatFormatting.GREEN), true);
+                // 清除冷却，让指示器立即可用
+                player.getCooldowns().removeCooldown(ModItems.LASER_POINTER.get());
             }
         }
     }
