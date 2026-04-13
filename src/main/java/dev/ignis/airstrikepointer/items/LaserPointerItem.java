@@ -34,8 +34,7 @@ public class LaserPointerItem extends Item {
 
     public enum Mode {
         POINT("mode.airstrikepointers.point", ChatFormatting.GREEN),
-        PATH("mode.airstrikepointers.path", ChatFormatting.BLUE),
-        CLEAR("mode.airstrikepointers.clear", ChatFormatting.RED);
+        PATH("mode.airstrikepointers.path", ChatFormatting.BLUE);
 
         private final String translationKey;
         private final ChatFormatting color;
@@ -73,11 +72,11 @@ public class LaserPointerItem extends Item {
         String modeKey = switch (mode) {
             case POINT -> "mode.airstrikepointers.point";
             case PATH -> "mode.airstrikepointers.path";
-            case CLEAR -> "mode.airstrikepointers.clear";
         };
         tooltipComponents.add(Component.translatable("tooltip.airstrikepointers.mode", 
                 Component.translatable(modeKey).withStyle(mode.getColor())));
         tooltipComponents.add(Component.translatable("tooltip.airstrikepointers.switch_mode").withStyle(ChatFormatting.GRAY));
+        tooltipComponents.add(Component.translatable("tooltip.airstrikepointers.clear_markers").withStyle(ChatFormatting.GRAY));
         tooltipComponents.add(Component.translatable("tooltip.airstrikepointers.cancel_mark").withStyle(ChatFormatting.GRAY));
         super.appendHoverText(stack, level, tooltipComponents, isAdvanced);
     }
@@ -92,7 +91,7 @@ public class LaserPointerItem extends Item {
         ItemStack stack = player.getItemInHand(usedHand);
 
         if (player.isShiftKeyDown()) {
-            // Shift+右键直接切换模式
+            // Shift+右键切换模式（POINT <-> PATH）
             if (!level.isClientSide) {
                 switchMode(stack);
                 Mode newMode = getMode(stack);
@@ -120,21 +119,20 @@ public class LaserPointerItem extends Item {
                 return;
             }
             
-            // 检查冷却（路径模式标记起点和清除模式时不检查冷却）
+            // 检查冷却（路径模式标记起点时不检查冷却）
             Mode mode = getMode(stack);
             boolean isPathStart = (mode == Mode.PATH && getPathMarkerId(stack) == null);
-            boolean isClearMode = (mode == Mode.CLEAR);
             
             int cooldownTicks = Config.MARKER_COOLDOWN_TICKS.get();
-            if (cooldownTicks > 0 && !isPathStart && !isClearMode && player.getCooldowns().isOnCooldown(this)) {
+            if (cooldownTicks > 0 && !isPathStart && player.getCooldowns().isOnCooldown(this)) {
                 player.displayClientMessage(Component.translatable("message.airstrikepointers.cooldown_active").withStyle(ChatFormatting.RED), true);
                 return;
             }
             
             performMarking(player, stack);
             
-            // 添加冷却（路径模式标记起点和清除模式时不添加冷却）
-            if (cooldownTicks > 0 && !isPathStart && !isClearMode) {
+            // 添加冷却（路径模式标记起点时不添加冷却）
+            if (cooldownTicks > 0 && !isPathStart) {
                 player.getCooldowns().addCooldown(this, cooldownTicks);
             }
             
@@ -148,12 +146,6 @@ public class LaserPointerItem extends Item {
     private void performMarking(Player player, ItemStack stack) {
         Level level = player.level();
         Mode mode = getMode(stack);
-
-        if (mode == Mode.CLEAR) {
-            MarkerStorage.get(level).clearMarkersByOwner(player.getUUID());
-            player.displayClientMessage(Component.translatable("message.airstrikepointers.markers_cleared").withStyle(ChatFormatting.GREEN), true);
-            return;
-        }
 
         // 检测目标
         Vec3 eyePos = player.getEyePosition(0.0f);
@@ -296,6 +288,36 @@ public class LaserPointerItem extends Item {
     private static String getPlayerTeamName(Player player) {
         Team team = player.getTeam();
         return team != null ? team.getName() : "";
+    }
+
+    @Override
+    public InteractionResult useOn(net.minecraft.world.item.context.UseOnContext context) {
+        // Shift+左键点击方块时清除标记
+        Player player = context.getPlayer();
+        if (player != null && player.isShiftKeyDown()) {
+            if (!context.getLevel().isClientSide) {
+                clearMarkersAndNotify(player);
+            }
+            return InteractionResult.sidedSuccess(context.getLevel().isClientSide);
+        }
+        return InteractionResult.PASS;
+    }
+
+    @Override
+    public InteractionResult interactLivingEntity(ItemStack stack, Player player, net.minecraft.world.entity.LivingEntity target, InteractionHand usedHand) {
+        // Shift+左键点击实体时清除标记
+        if (player.isShiftKeyDown()) {
+            if (!player.level().isClientSide) {
+                clearMarkersAndNotify(player);
+            }
+            return InteractionResult.sidedSuccess(player.level().isClientSide);
+        }
+        return InteractionResult.PASS;
+    }
+
+    private void clearMarkersAndNotify(Player player) {
+        MarkerStorage.get(player.level()).clearMarkersByOwner(player.getUUID());
+        player.displayClientMessage(Component.translatable("message.airstrikepointers.markers_cleared").withStyle(ChatFormatting.GREEN), true);
     }
 
     @Override

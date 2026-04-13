@@ -197,7 +197,6 @@ public class LaserPointerOverlayRenderer {
         String modeKey = switch (mode) {
             case POINT -> "mode.airstrikepointers.point";
             case PATH -> "mode.airstrikepointers.path";
-            case CLEAR -> "mode.airstrikepointers.clear";
         };
         String modeText = Component.translatable(modeKey).getString();
         int modeTextWidth = mc.font.width(modeText);
@@ -210,7 +209,6 @@ public class LaserPointerOverlayRenderer {
         int modeColor = switch (mode) {
             case POINT -> 0x55FF55; // 绿色
             case PATH -> 0x5555FF; // 蓝色
-            case CLEAR -> 0xFF5555; // 红色
         };
         
         // 渲染模式名称
