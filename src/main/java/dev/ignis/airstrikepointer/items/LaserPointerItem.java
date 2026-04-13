@@ -291,36 +291,6 @@ public class LaserPointerItem extends Item {
     }
 
     @Override
-    public InteractionResult useOn(net.minecraft.world.item.context.UseOnContext context) {
-        // Shift+左键点击方块时清除标记
-        Player player = context.getPlayer();
-        if (player != null && player.isShiftKeyDown()) {
-            if (!context.getLevel().isClientSide) {
-                clearMarkersAndNotify(player);
-            }
-            return InteractionResult.sidedSuccess(context.getLevel().isClientSide);
-        }
-        return InteractionResult.PASS;
-    }
-
-    @Override
-    public InteractionResult interactLivingEntity(ItemStack stack, Player player, net.minecraft.world.entity.LivingEntity target, InteractionHand usedHand) {
-        // Shift+左键点击实体时清除标记
-        if (player.isShiftKeyDown()) {
-            if (!player.level().isClientSide) {
-                clearMarkersAndNotify(player);
-            }
-            return InteractionResult.sidedSuccess(player.level().isClientSide);
-        }
-        return InteractionResult.PASS;
-    }
-
-    private void clearMarkersAndNotify(Player player) {
-        MarkerStorage.get(player.level()).clearMarkersByOwner(player.getUUID());
-        player.displayClientMessage(Component.translatable("message.airstrikepointers.markers_cleared").withStyle(ChatFormatting.GREEN), true);
-    }
-
-    @Override
     public void inventoryTick(ItemStack stack, Level level, Entity entity, int slotId, boolean isSelected) {
         if (!level.isClientSide && isSelected && entity instanceof Player player) {
             UUID pathMarkerId = getPathMarkerId(stack);

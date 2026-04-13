@@ -32,5 +32,7 @@ public class NetworkHandler {
                 RemoveMarkerPacket::encode, RemoveMarkerPacket::decode, RemoveMarkerPacket::handle);
         CHANNEL.registerMessage(packetId++, UpdatePointMarkerPacket.class,
                 UpdatePointMarkerPacket::encode, UpdatePointMarkerPacket::decode, UpdatePointMarkerPacket::handle);
+        CHANNEL.registerMessage(packetId++, RequestClearMarkersPacket.class,
+                RequestClearMarkersPacket::encode, RequestClearMarkersPacket::decode, RequestClearMarkersPacket::handle);
     }
 }
