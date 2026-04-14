@@ -5,6 +5,8 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
 
+import java.util.List;
+
 @Mod.EventBusSubscriber(modid = AirstrikePointers.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class Config {
     private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
@@ -38,9 +40,9 @@ public class Config {
             .comment("Vertical offset from tracked entity for guidance center (blocks)")
             .defineInRange("guidance.verticalOffset", 32, -128, 128);
 
-    public static final ForgeConfigSpec.ConfigValue<java.util.List<String>> GUIDANCE_ENTITY_LIST = BUILDER
+    public static final ForgeConfigSpec.ConfigValue<List<String>> GUIDANCE_ENTITY_LIST = BUILDER
             .comment("List of entity IDs that can be guided (e.g., [\"minecraft:arrow\", \"minecraft:snowball\"])")
-            .define("guidance.entityList", java.util.Arrays.asList("minecraft:arrow"));
+            .define("guidance.entityList", new java.util.ArrayList<>(java.util.List.of("minecraft:arrow")));
 
     public static final ForgeConfigSpec.IntValue GUIDANCE_INTERVAL = BUILDER
             .comment("Guidance interval in ticks (1 = every tick)")
