@@ -26,7 +26,7 @@ public class Config {
     // Guidance System Config
     public static final ForgeConfigSpec.BooleanValue GUIDANCE_ENABLED = BUILDER
             .comment("Enable guidance system for tracked entities")
-            .define("guidance.enabled", false);
+            .define("guidance.enabled", true);
 
     public static final ForgeConfigSpec.IntValue GUIDANCE_HORIZONTAL_RANGE = BUILDER
             .comment("Horizontal range for guidance search (blocks)")
@@ -50,11 +50,11 @@ public class Config {
 
     public static final ForgeConfigSpec.DoubleValue GUIDANCE_RATIO = BUILDER
             .comment("Guidance ratio (0.0-1.0), how much velocity is redirected toward target")
-            .defineInRange("guidance.ratio", 0.1, 0.0, 1.0);
+            .defineInRange("guidance.ratio", 0.2, 0.0, 1.0);
 
     public static final ForgeConfigSpec.BooleanValue GUIDANCE_GUIDE_CBC_SHELLS = BUILDER
             .comment("Guide all Create Big Cannons shells (AbstractBigCannonProjectile), regardless of config list")
-            .define("guidance.guideCbcShells", false);
+            .define("guidance.guideCbcShells", true);
 
     static final ForgeConfigSpec SPEC = BUILDER.build();
 
