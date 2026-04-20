@@ -68,6 +68,7 @@ public class GuidanceSystem {
             MarkerStorage storage = MarkerStorage.get(level);
             
             for (PointMarker marker : storage.getPointMarkers()) {
+                if (marker.isEntityLost()) continue;
                 Vec3 targetPos = marker.getPosition().add(0, verticalOffset, 0);
 
                 // 搜索制导范围内的实体

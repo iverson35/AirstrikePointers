@@ -166,6 +166,8 @@ public class MarkerStorage extends SavedData {
         List<UUID> expiredPathMarkers = new ArrayList<>();
         List<PointMarker> updatedEntityMarkers = new ArrayList<>();
         List<PointMarker> removedEntityMarkers = new ArrayList<>();
+        List<PointMarker> lostEntityMarkers = new ArrayList<>();
+        List<PointMarker> foundEntityMarkers = new ArrayList<>();
 
         // Update entity-tracking markers every 10 ticks
         MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
@@ -177,9 +179,16 @@ public class MarkerStorage extends SavedData {
                         marker.setPosition(entity.position());
                         updatedEntityMarkers.add(marker);
                         changed = true;
+                        if (marker.isEntityLost()) {
+                            marker.setEntityLost(false);
+                            foundEntityMarkers.add(marker);
+                        }
                     } else {
-                        // 实体消失，记录以便清理PersistentData
-                        removedEntityMarkers.add(marker);
+                        // 实体未加载（区块卸载等），标记为丢失但不清理PersistentData
+                        if (!marker.isEntityLost()) {
+                            marker.setEntityLost(true);
+                            lostEntityMarkers.add(marker);
+                        }
                     }
                 }
             }
@@ -224,7 +233,15 @@ public class MarkerStorage extends SavedData {
             broadcastToAll(new UpdatePointMarkerPacket(marker.getMarkerId(), marker.getPosition()));
         }
 
-        // 清理实体的PersistentData
+        // 通知客户端实体丢失/恢复状态
+        for (PointMarker marker : lostEntityMarkers) {
+            broadcastToAll(new UpdateEntityLostPacket(marker.getMarkerId(), true));
+        }
+        for (PointMarker marker : foundEntityMarkers) {
+            broadcastToAll(new UpdateEntityLostPacket(marker.getMarkerId(), false));
+        }
+
+        // 清理实体的PersistentData（仅在标记真正过期时）
         if (server != null && !removedEntityMarkers.isEmpty()) {
             for (PointMarker marker : removedEntityMarkers) {
                 if (marker.getTargetEntityId() != null) {

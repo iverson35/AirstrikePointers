@@ -9,6 +9,7 @@ public class PointMarker extends MarkerData {
     private Vec3 position;
     private final UUID targetEntityId; // null if not tracking an entity
     private final String itemName; // null if item has no custom name
+    private boolean entityLost; // true if the tracked entity is not currently loaded
 
     public PointMarker(UUID markerId, UUID ownerId, Vec3 position, int color, String teamName, int lifetimeTicks) {
         this(markerId, ownerId, position, color, teamName, lifetimeTicks, null, null);
@@ -23,12 +24,15 @@ public class PointMarker extends MarkerData {
         this.position = position;
         this.targetEntityId = targetEntityId;
         this.itemName = itemName;
+        this.entityLost = false;
     }
 
     public Vec3 getPosition() { return position; }
     public void setPosition(Vec3 position) { this.position = position; }
     public UUID getTargetEntityId() { return targetEntityId; }
     public String getItemName() { return itemName; }
+    public boolean isEntityLost() { return entityLost; }
+    public void setEntityLost(boolean lost) { this.entityLost = lost; }
 
     public boolean isTrackingEntity() { return targetEntityId != null; }
 

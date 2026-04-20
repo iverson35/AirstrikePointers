@@ -6,6 +6,7 @@ import dev.ignis.airstrikepointer.AirstrikePointers;
 import dev.ignis.airstrikepointer.Config;
 import dev.ignis.airstrikepointer.network.CreatePathMarkerPacket;
 import dev.ignis.airstrikepointer.network.CreatePointMarkerPacket;
+import dev.ignis.airstrikepointer.network.UpdateEntityLostPacket;
 import dev.ignis.airstrikepointer.network.UpdatePointMarkerPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -96,6 +97,13 @@ public class MarkerRenderer {
         if (marker != null) {
             marker.position = packet.position();
             marker.serverSyncedPosition = packet.position();
+        }
+    }
+
+    public static void updateEntityLost(UpdateEntityLostPacket packet) {
+        ClientPointMarker marker = pointMarkers.get(packet.markerId());
+        if (marker != null) {
+            marker.entityLost = packet.lost();
         }
     }
 
@@ -349,6 +357,13 @@ public class MarkerRenderer {
                 }
             }
         }
+        // 实体在服务端已丢失（死亡/卸载），显示 X名字X
+        if (marker.entityLost && marker.entityName != null && !marker.entityName.isEmpty()) {
+            String fallback = "X" + marker.entityName + "X";
+            int nameWidth = font.width(fallback);
+            gui.drawString(font, fallback, x - nameWidth / 2, y, 0xFFAAAAAA);
+            return;
+        }
         // 超视距 fallback：使用服务器快照，浅灰色，前后加 -
         if (marker.entityName != null && !marker.entityName.isEmpty()) {
             String fallback = "-" + marker.entityName + "-";
@@ -600,6 +615,7 @@ public class MarkerRenderer {
         float screenY = -1f;
         boolean screenVisible = false;
 
+        boolean entityLost;
         final String entityName;
         final String itemName;
 
@@ -613,6 +629,7 @@ public class MarkerRenderer {
             this.remainingTicks = packet.lifetimeTicks();
             this.age = 0;
             this.targetEntityId = packet.targetEntityId();
+            this.entityLost = false;
             this.entityName = packet.entityName();
             this.itemName = packet.itemName();
         }
