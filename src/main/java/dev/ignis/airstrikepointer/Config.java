@@ -68,6 +68,10 @@ public class Config {
             .comment("When team filtering is enabled, whether to show markers from players without a team")
             .define("showUnteamMarkers", true);
 
+    public static final ForgeConfigSpec.IntValue MAX_RENDER_DISTANCE = CLIENT_BUILDER
+            .comment("Maximum distance to render markers (blocks). 0 = unlimited")
+            .defineInRange("maxRenderDistance", 0, 0, 10000);
+
     static final ForgeConfigSpec CLIENT_SPEC = CLIENT_BUILDER.build();
 
     // 配置重载回调

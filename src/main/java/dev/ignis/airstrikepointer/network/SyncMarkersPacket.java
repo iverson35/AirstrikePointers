@@ -92,13 +92,15 @@ public record SyncMarkersPacket(
             if (buf.readBoolean()) {
                 endPos = new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble());
             }
+            float height = buf.readFloat();
+            int color = buf.readInt();
             String teamName = buf.readUtf();
             int remainingTicks = buf.readInt();
             String itemName = buf.readUtf();
             if (itemName.isEmpty()) itemName = null;
             paths.add(new PathMarkerData(
                     markerId, ownerId, startPos, endPos,
-                    buf.readFloat(), buf.readInt(), teamName, remainingTicks, itemName
+                    height, color, teamName, remainingTicks, itemName
             ));
         }
 

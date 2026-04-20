@@ -371,6 +371,10 @@ public class MarkerRenderer {
         marker.screenX = window.getGuiScaledWidth() * (0.5f + pos.x * 0.5f);
         marker.screenY = window.getGuiScaledHeight() * (0.5f - pos.y * 0.5f);
         marker.screenVisible = depth > 0;
+        if (marker.screenVisible && Config.MAX_RENDER_DISTANCE.get() > 0) {
+            double dist = midPoint.distanceTo(camera.getPosition());
+            marker.screenVisible = dist <= Config.MAX_RENDER_DISTANCE.get();
+        }
     }
 
     private static void projectMarkerToScreen(ClientPointMarker marker, RenderLevelStageEvent event) {
@@ -400,6 +404,10 @@ public class MarkerRenderer {
         marker.screenX = window.getGuiScaledWidth() * (0.5f + pos.x * 0.5f);
         marker.screenY = window.getGuiScaledHeight() * (0.5f - pos.y * 0.5f);
         marker.screenVisible = depth > 0;
+        if (marker.screenVisible && Config.MAX_RENDER_DISTANCE.get() > 0) {
+            double dist = worldPos.distanceTo(camera.getPosition());
+            marker.screenVisible = dist <= Config.MAX_RENDER_DISTANCE.get();
+        }
     }
 
     private static void renderPointMarker(PoseStack poseStack, MultiBufferSource bufferSource, ClientPointMarker marker) {
@@ -476,6 +484,11 @@ public class MarkerRenderer {
         Vec3 midPoint = marker.startPos.add(marker.endPos).scale(0.5);
         double distance = midPoint.distanceTo(cameraPos);
 
+        // 检查最大渲染距离
+        if (Config.MAX_RENDER_DISTANCE.get() > 0 && distance > Config.MAX_RENDER_DISTANCE.get()) {
+            return;
+        }
+
         // 距离自适应宽度
         float minDistance = 64.0f;
         float maxDistance = 704.0f; // 64 + 640
@@ -527,6 +540,10 @@ public class MarkerRenderer {
 
     private static void renderPathStartMarker(PoseStack poseStack, MultiBufferSource bufferSource, ClientPathMarker marker, Vec3 cameraPos, float r, float g, float b) {
         double distance = marker.startPos.distanceTo(cameraPos);
+
+        if (Config.MAX_RENDER_DISTANCE.get() > 0 && distance > Config.MAX_RENDER_DISTANCE.get()) {
+            return;
+        }
 
         float scale = calculateConstantScreenSizeScale(distance);
 
