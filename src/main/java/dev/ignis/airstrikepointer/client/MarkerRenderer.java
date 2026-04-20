@@ -37,6 +37,8 @@ public class MarkerRenderer {
     @SuppressWarnings("removal")
     private static final ResourceLocation POINT_TEXTURE = new ResourceLocation(AirstrikePointers.MODID, "textures/marker/point.png");
     @SuppressWarnings("removal")
+    private static final ResourceLocation BLOCK_POINT_TEXTURE = new ResourceLocation(AirstrikePointers.MODID, "textures/marker/point_block.png");
+    @SuppressWarnings("removal")
     private static final ResourceLocation PATH_TEXTURE = new ResourceLocation(AirstrikePointers.MODID, "textures/marker/path.png");
     @SuppressWarnings("removal")
     private static final ResourceLocation PATH_START_TEXTURE = new ResourceLocation(AirstrikePointers.MODID, "textures/marker/path_start.png");
@@ -270,10 +272,11 @@ public class MarkerRenderer {
             int x = (int) marker.screenX;
             int y = (int) marker.screenY;
 
-            // 绘制纹理
+            // 绘制纹理（实体标记与方块标记使用不同纹理）
+            ResourceLocation texture = marker.targetEntityId != null ? POINT_TEXTURE : BLOCK_POINT_TEXTURE;
             RenderSystem.setShaderColor(r, g, b, 0.8f);
             RenderSystem.enableBlend();
-            gui.blit(POINT_TEXTURE, x - 8, y - 8, 16, 16, 0f, 0f, 32, 32, 32, 32);
+            gui.blit(texture, x - 8, y - 8, 16, 16, 0f, 0f, 32, 32, 32, 32);
             RenderSystem.disableBlend();
             RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
 
