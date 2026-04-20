@@ -21,6 +21,7 @@ import net.minecraft.world.scores.Team;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.client.extensions.common.IClientItemExtensions;
+import net.minecraftforge.entity.PartEntity;
 import net.minecraftforge.network.PacketDistributor;
 
 import javax.annotation.Nullable;
@@ -164,10 +165,15 @@ public class LaserPointerItem extends Item {
         UUID targetEntityId = null;
 
         if (entityHitResult != null) {
+            Entity hitEntity = entityHitResult.getEntity();
+            // 如果命中的是多部分实体的部件，则转而标记父实体
+            if (hitEntity instanceof PartEntity<?> partEntity) {
+                hitEntity = partEntity.getParent();
+            }
             targetPos = entityHitResult.getLocation();
             targetType = CreatePointMarkerPacket.TARGET_ENTITY;
-            entityName = entityHitResult.getEntity().getDisplayName().getString();
-            targetEntityId = entityHitResult.getEntity().getUUID();
+            entityName = hitEntity.getDisplayName().getString();
+            targetEntityId = hitEntity.getUUID();
         } else {
             HitResult blockHitResult = player.pick(300.0, 0.0f, false);
             if (blockHitResult.getType() == HitResult.Type.BLOCK) {
