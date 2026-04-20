@@ -257,11 +257,46 @@ public class MarkerRenderer {
             int x = (int) marker.screenX;
             int y = (int) marker.screenY;
 
+            // 绘制纹理
             RenderSystem.setShaderColor(r, g, b, 0.8f);
             RenderSystem.enableBlend();
             gui.blit(POINT_TEXTURE, x - 8, y - 8, 16, 16, 0f, 0f, 32, 32, 32, 32);
             RenderSystem.disableBlend();
             RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+
+            Minecraft mc = Minecraft.getInstance();
+            var font = mc.font;
+
+            // 上方：被标记实体名字
+            if (marker.targetEntityId != null && mc.level != null) {
+                for (var entity : mc.level.entitiesForRendering()) {
+                    if (marker.targetEntityId.equals(entity.getUUID())) {
+                        var name = entity.getDisplayName();
+                        int nameWidth = font.width(name);
+                        gui.drawString(font, name, x - nameWidth / 2, y - 8 - font.lineHeight - 2, 0xFFFFFFFF);
+                        break;
+                    }
+                }
+            }
+
+            // 下方：标记者名字（稍小）
+            String ownerName = null;
+            if (mc.getConnection() != null) {
+                var playerInfo = mc.getConnection().getPlayerInfo(marker.ownerId);
+                if (playerInfo != null) {
+                    ownerName = playerInfo.getProfile().getName();
+                }
+            }
+            if (ownerName == null) {
+                ownerName = marker.ownerId.toString().substring(0, 8);
+            }
+
+            int ownerWidth = font.width(ownerName);
+            gui.pose().pushPose();
+            gui.pose().translate(x, y + 8 + 4, 0);
+            gui.pose().scale(0.75f, 0.75f, 1f);
+            gui.drawString(font, ownerName, -ownerWidth / 2, 0, 0xFFAAAAAA);
+            gui.pose().popPose();
         }
     }
 
