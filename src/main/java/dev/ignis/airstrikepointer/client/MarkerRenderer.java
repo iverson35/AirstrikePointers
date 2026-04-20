@@ -25,10 +25,14 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector4f;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.*;
 
 @Mod.EventBusSubscriber(modid = AirstrikePointers.MODID, value = Dist.CLIENT)
 public class MarkerRenderer {
+    private static final Logger LOGGER = LoggerFactory.getLogger(MarkerRenderer.class);
     @SuppressWarnings("removal")
     private static final ResourceLocation POINT_TEXTURE = new ResourceLocation(AirstrikePointers.MODID, "textures/marker/point.png");
     @SuppressWarnings("removal")
@@ -252,6 +256,11 @@ public class MarkerRenderer {
         PoseStack poseStack = event.getPoseStack();
         Vec3 cameraPos = event.getCamera().getPosition();
 
+        // 计算点标记的屏幕坐标（必须在 pushPose 之前，矩阵还未被修改）
+        for (ClientPointMarker marker : pointMarkers.values()) {
+            projectMarkerToScreen(marker, event);
+        }
+
         poseStack.pushPose();
         // 关键：将坐标系原点移动到相机位置，这样世界坐标就相对于相机了
         poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
@@ -263,27 +272,65 @@ public class MarkerRenderer {
             renderPathMarker(poseStack, bufferSource, marker);
         }
 
-        // 渲染坐标点标�?
-        for (ClientPointMarker marker : pointMarkers.values()) {
-            renderPointMarker(poseStack, bufferSource, marker);
-        }
-
         bufferSource.endBatch(RenderType.lines());
         poseStack.popPose();
     }
 
     @SubscribeEvent
     public static void onRenderGuiPost(RenderGuiEvent.Post event) {
-        if (!testScreenVisible) {
-            return;
+        GuiGraphics gui = event.getGuiGraphics();
+
+        // 测试点
+        if (testScreenVisible) {
+            int x = (int) testScreenX;
+            int y = (int) testScreenY;
+            int size = 10;
+            gui.fill(x - size / 2, y - size / 2, x + size / 2, y + size / 2, 0xFFFF0000);
         }
 
-        GuiGraphics gui = event.getGuiGraphics();
-        int x = (int) testScreenX;
-        int y = (int) testScreenY;
-        int size = 10;
+        // 点标记
+        for (ClientPointMarker marker : pointMarkers.values()) {
+            if (!marker.screenVisible) {
+                continue;
+            }
 
-        gui.fill(x - size / 2, y - size / 2, x + size / 2, y + size / 2, 0xFFFF0000);
+            int argb = (0xCC << 24) | (marker.color & 0xFFFFFF);
+
+            int x = (int) marker.screenX;
+            int y = (int) marker.screenY;
+            int size = 12;
+
+            gui.fill(x - size / 2, y - size / 2, x + size / 2, y + size / 2, argb);
+        }
+    }
+
+    private static void projectMarkerToScreen(ClientPointMarker marker, RenderLevelStageEvent event) {
+        Minecraft mc = Minecraft.getInstance();
+        Vec3 worldPos = marker.position.add(0, 0.5, 0);
+        var camera = event.getCamera();
+
+        Matrix4f modelView = new Matrix4f(event.getPoseStack().last().pose());
+        Matrix4f projection = new Matrix4f(event.getProjectionMatrix());
+
+        Vector4f pos = new Vector4f(
+                (float) (worldPos.x - camera.getPosition().x),
+                (float) (worldPos.y - camera.getPosition().y),
+                (float) (worldPos.z - camera.getPosition().z),
+                1f
+        );
+
+        pos.mul(modelView);
+        pos.mul(projection);
+
+        float depth = pos.w;
+        if (depth != 0) {
+            pos.div(depth);
+        }
+
+        var window = mc.getWindow();
+        marker.screenX = window.getGuiScaledWidth() * (0.5f + pos.x * 0.5f);
+        marker.screenY = window.getGuiScaledHeight() * (0.5f - pos.y * 0.5f);
+        marker.screenVisible = depth > 0;
     }
 
     private static void renderPointMarker(PoseStack poseStack, MultiBufferSource bufferSource, ClientPointMarker marker) {
@@ -449,6 +496,11 @@ public class MarkerRenderer {
         final String teamName;
         int remainingTicks;
         int age;
+
+        // GUI投影缓存
+        float screenX = -1f;
+        float screenY = -1f;
+        boolean screenVisible = false;
 
         ClientPointMarker(CreatePointMarkerPacket packet) {
             this.markerId = packet.markerId();
