@@ -205,7 +205,7 @@ public class LaserPointerItem extends Item {
                 clearPathMarkerId(stack);
                 player.displayClientMessage(Component.translatable("message.airstrikepointers.path_created").withStyle(ChatFormatting.GREEN), true);
             } else {
-                var marker = storage.createPathStart(player.getUUID(), targetPos, color, teamName, player.getDisplayName().getString());
+                var marker = storage.createPathStart(player.getUUID(), targetPos, color, teamName, player.getDisplayName().getString(), itemName);
                 if (marker != null) {
                     setPathMarkerId(stack, marker.getMarkerId());
                     player.displayClientMessage(Component.translatable("message.airstrikepointers.path_start_set").withStyle(ChatFormatting.YELLOW), true);
@@ -213,7 +213,7 @@ public class LaserPointerItem extends Item {
                     int lifetimeTicks = marker.getRemainingTicks();
                     CreatePathMarkerPacket previewPacket = new CreatePathMarkerPacket(
                             marker.getMarkerId(), player.getUUID(), targetPos, null,
-                            (float) targetPos.y, color, teamName, lifetimeTicks, true, 0);
+                            (float) targetPos.y, color, teamName, lifetimeTicks, true, 0, itemName);
                     NetworkHandler.CHANNEL.sendTo(previewPacket, ((ServerPlayer) player).connection.connection, net.minecraftforge.network.NetworkDirection.PLAY_TO_CLIENT);
                 } else {
                     player.displayClientMessage(Component.translatable("message.airstrikepointers.marker_limit_reached").withStyle(ChatFormatting.RED), true);

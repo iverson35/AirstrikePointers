@@ -9,17 +9,24 @@ public class PathMarker extends MarkerData {
     private final Vec3 startPos;
     private Vec3 endPos;
     private final float height;
+    private final String itemName; // null if item has no custom name
 
     public PathMarker(UUID markerId, UUID ownerId, Vec3 startPos, Vec3 endPos, float height, int color, String teamName, int lifetimeTicks) {
+        this(markerId, ownerId, startPos, endPos, height, color, teamName, lifetimeTicks, null);
+    }
+
+    public PathMarker(UUID markerId, UUID ownerId, Vec3 startPos, Vec3 endPos, float height, int color, String teamName, int lifetimeTicks, String itemName) {
         super(markerId, ownerId, color, teamName, lifetimeTicks);
         this.startPos = startPos;
         this.endPos = endPos;
         this.height = height;
+        this.itemName = itemName;
     }
 
     public Vec3 getStartPos() { return startPos; }
     public Vec3 getEndPos() { return endPos; }
     public float getHeight() { return height; }
+    public String getItemName() { return itemName; }
     public boolean isComplete() { return endPos != null; }
 
     public void setEndPos(Vec3 endPos) {
@@ -44,6 +51,9 @@ public class PathMarker extends MarkerData {
         tag.putInt("color", color);
         tag.putString("teamName", teamName);
         tag.putInt("remainingTicks", remainingTicks);
+        if (itemName != null) {
+            tag.putString("itemName", itemName);
+        }
         return tag;
     }
 
@@ -64,6 +74,9 @@ public class PathMarker extends MarkerData {
         tag.putInt("color", color);
         tag.putString("teamName", teamName);
         tag.putInt("remainingTicks", remainingTicks);
+        if (itemName != null) {
+            tag.putString("itemName", itemName);
+        }
     }
 
     public static PathMarker load(CompoundTag tag) {
@@ -72,6 +85,7 @@ public class PathMarker extends MarkerData {
         if (tag.getBoolean("hasEnd")) {
             endPos = new Vec3(tag.getDouble("endX"), tag.getDouble("endY"), tag.getDouble("endZ"));
         }
+        String itemName = tag.contains("itemName") ? tag.getString("itemName") : null;
         return new PathMarker(
                 tag.getUUID("markerId"),
                 tag.getUUID("ownerId"),
@@ -80,7 +94,8 @@ public class PathMarker extends MarkerData {
                 tag.getFloat("height"),
                 tag.getInt("color"),
                 tag.getString("teamName"),
-                tag.getInt("remainingTicks")
+                tag.getInt("remainingTicks"),
+                itemName
         );
     }
 }

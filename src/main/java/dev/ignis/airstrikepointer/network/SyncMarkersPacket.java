@@ -23,7 +23,8 @@ public record SyncMarkersPacket(
 
     public record PathMarkerData(
             UUID markerId, UUID ownerId, Vec3 startPos, Vec3 endPos,
-            float height, int color, String teamName, int remainingTicks
+            float height, int color, String teamName, int remainingTicks,
+            String itemName
     ) {}
 
     public void encode(FriendlyByteBuf buf) {
@@ -61,6 +62,7 @@ public record SyncMarkersPacket(
             buf.writeInt(data.color);
             buf.writeUtf(data.teamName);
             buf.writeInt(data.remainingTicks);
+            buf.writeUtf(data.itemName != null ? data.itemName : "");
         }
     }
 
@@ -90,9 +92,13 @@ public record SyncMarkersPacket(
             if (buf.readBoolean()) {
                 endPos = new Vec3(buf.readDouble(), buf.readDouble(), buf.readDouble());
             }
+            String teamName = buf.readUtf();
+            int remainingTicks = buf.readInt();
+            String itemName = buf.readUtf();
+            if (itemName.isEmpty()) itemName = null;
             paths.add(new PathMarkerData(
                     markerId, ownerId, startPos, endPos,
-                    buf.readFloat(), buf.readInt(), buf.readUtf(), buf.readInt()
+                    buf.readFloat(), buf.readInt(), teamName, remainingTicks, itemName
             ));
         }
 
@@ -112,7 +118,7 @@ public record SyncMarkersPacket(
             for (PathMarkerData data : pathMarkers) {
                 MarkerRenderer.addPathMarker(new CreatePathMarkerPacket(
                         data.markerId, data.ownerId, data.startPos, data.endPos,
-                        data.height, data.color, data.teamName, data.remainingTicks, false, 0
+                        data.height, data.color, data.teamName, data.remainingTicks, false, 0, data.itemName
                 ));
             }
         });

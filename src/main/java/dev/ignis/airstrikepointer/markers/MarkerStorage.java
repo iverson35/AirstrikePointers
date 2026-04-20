@@ -104,14 +104,14 @@ public class MarkerStorage extends SavedData {
         return marker;
     }
 
-    public PathMarker createPathStart(UUID ownerId, Vec3 startPos, int color, String teamName, String playerName) {
+    public PathMarker createPathStart(UUID ownerId, Vec3 startPos, int color, String teamName, String playerName, String itemName) {
         if (getPlayerMarkerCount(ownerId) >= Config.MAX_MARKERS_PER_PLAYER.get()) {
             return null;
         }
 
         UUID markerId = UUID.randomUUID();
         int lifetimeTicks = Config.MARKER_LIFETIME_SECONDS.get() * 20;
-        PathMarker marker = new PathMarker(markerId, ownerId, startPos, null, (float) startPos.y, color, teamName, lifetimeTicks);
+        PathMarker marker = new PathMarker(markerId, ownerId, startPos, null, (float) startPos.y, color, teamName, lifetimeTicks, itemName);
         pathMarkers.put(markerId, marker);
         incrementPlayerCount(ownerId);
         setDirty();
@@ -133,7 +133,7 @@ public class MarkerStorage extends SavedData {
             if (angle < 0) angle += 360;
 
             broadcastToAll(new CreatePathMarkerPacket(markerId, marker.getOwnerId(), marker.getStartPos(), endPos,
-                    marker.getHeight(), marker.getColor(), marker.getTeamName(), marker.getRemainingTicks(), false, angle));
+                    marker.getHeight(), marker.getColor(), marker.getTeamName(), marker.getRemainingTicks(), false, angle, marker.getItemName()));
             broadcastPathNotification(marker, playerName, angle);
         }
     }
@@ -260,7 +260,8 @@ public class MarkerStorage extends SavedData {
         for (PathMarker marker : pathMarkers.values()) {
             pathData.add(new SyncMarkersPacket.PathMarkerData(
                     marker.getMarkerId(), marker.getOwnerId(), marker.getStartPos(), marker.getEndPos(),
-                    marker.getHeight(), marker.getColor(), marker.getTeamName(), marker.getRemainingTicks()
+                    marker.getHeight(), marker.getColor(), marker.getTeamName(), marker.getRemainingTicks(),
+                    marker.getItemName()
             ));
         }
 

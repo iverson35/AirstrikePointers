@@ -226,6 +226,11 @@ public class MarkerRenderer {
             projectMarkerToScreen(marker, event);
         }
 
+        // 计算路径标记中点的屏幕坐标（必须在 pushPose 之前）
+        for (ClientPathMarker marker : pathMarkers.values()) {
+            projectPathMarkerToScreen(marker, event);
+        }
+
         poseStack.pushPose();
         // 关键：将坐标系原点移动到相机位置，这样世界坐标就相对于相机了
         poseStack.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
@@ -302,6 +307,70 @@ public class MarkerRenderer {
             }
             gui.pose().popPose();
         }
+
+        // 路径标记中点信息（额外渲染，不替换世界空间路径）
+        for (ClientPathMarker marker : pathMarkers.values()) {
+            if (!marker.screenVisible || marker.endPos == null) {
+                continue;
+            }
+
+            int x = (int) marker.screenX;
+            int y = (int) marker.screenY;
+
+            Minecraft mc = Minecraft.getInstance();
+            var font = mc.font;
+
+            // 标记者名字
+            String ownerName = null;
+            if (mc.getConnection() != null) {
+                var playerInfo = mc.getConnection().getPlayerInfo(marker.ownerId);
+                if (playerInfo != null) {
+                    ownerName = playerInfo.getProfile().getName();
+                }
+            }
+            if (ownerName == null) {
+                ownerName = marker.ownerId.toString().substring(0, 8);
+            }
+
+            int ownerWidth = font.width(ownerName);
+            gui.pose().pushPose();
+            gui.pose().translate(x, y, 0);
+            gui.pose().scale(0.75f, 0.75f, 1f);
+            gui.drawString(font, ownerName, -ownerWidth / 2, -font.lineHeight - 2, 0xFFAAAAAA);
+            if (marker.itemName != null && !marker.itemName.isEmpty()) {
+                int itemWidth = font.width(marker.itemName);
+                gui.drawString(font, marker.itemName, -itemWidth / 2, 2, 0xFFFFFF55);
+            }
+            gui.pose().popPose();
+        }
+    }
+
+    private static void projectPathMarkerToScreen(ClientPathMarker marker, RenderLevelStageEvent event) {
+        if (marker.endPos == null) {
+            marker.screenVisible = false;
+            return;
+        }
+        Minecraft mc = Minecraft.getInstance();
+        Vec3 midPoint = marker.startPos.add(marker.endPos).scale(0.5).add(0, 1.0, 0);
+        var camera = event.getCamera();
+        Matrix4f modelView = new Matrix4f(event.getPoseStack().last().pose());
+        Matrix4f projection = new Matrix4f(event.getProjectionMatrix());
+        Vector4f pos = new Vector4f(
+                (float) (midPoint.x - camera.getPosition().x),
+                (float) (midPoint.y - camera.getPosition().y),
+                (float) (midPoint.z - camera.getPosition().z),
+                1f
+        );
+        pos.mul(modelView);
+        pos.mul(projection);
+        float depth = pos.w;
+        if (depth != 0) {
+            pos.div(depth);
+        }
+        var window = mc.getWindow();
+        marker.screenX = window.getGuiScaledWidth() * (0.5f + pos.x * 0.5f);
+        marker.screenY = window.getGuiScaledHeight() * (0.5f - pos.y * 0.5f);
+        marker.screenVisible = depth > 0;
     }
 
     private static void projectMarkerToScreen(ClientPointMarker marker, RenderLevelStageEvent event) {
@@ -554,6 +623,12 @@ public class MarkerRenderer {
         final String teamName;
         int remainingTicks;
         int age;
+        final String itemName;
+
+        // GUI投影缓存
+        float screenX = -1f;
+        float screenY = -1f;
+        boolean screenVisible = false;
 
         ClientPathMarker(CreatePathMarkerPacket packet) {
             this.markerId = packet.markerId();
@@ -565,6 +640,7 @@ public class MarkerRenderer {
             this.teamName = packet.teamName();
             this.remainingTicks = packet.lifetimeTicks();
             this.age = 0;
+            this.itemName = packet.itemName();
         }
 
         boolean tick() {

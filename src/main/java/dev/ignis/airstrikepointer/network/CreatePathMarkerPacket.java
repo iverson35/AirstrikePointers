@@ -18,7 +18,8 @@ public record CreatePathMarkerPacket(
         String teamName,
         int lifetimeTicks,
         boolean isPreview,
-        float headingAngle // 航向角度（度）
+        float headingAngle, // 航向角度（度）
+        String itemName // 空袭指示器的自定义命名，null表示未命名
 ) {
     public void encode(FriendlyByteBuf buf) {
         buf.writeUUID(markerId);
@@ -38,6 +39,7 @@ public record CreatePathMarkerPacket(
         buf.writeInt(lifetimeTicks);
         buf.writeBoolean(isPreview);
         buf.writeFloat(headingAngle);
+        buf.writeUtf(itemName != null ? itemName : "");
     }
 
     public static CreatePathMarkerPacket decode(FriendlyByteBuf buf) {
@@ -54,7 +56,9 @@ public record CreatePathMarkerPacket(
         int lifetimeTicks = buf.readInt();
         boolean isPreview = buf.readBoolean();
         float headingAngle = buf.readFloat();
-        return new CreatePathMarkerPacket(markerId, ownerId, startPos, endPos, height, color, teamName, lifetimeTicks, isPreview, headingAngle);
+        String itemName = buf.readUtf();
+        if (itemName.isEmpty()) itemName = null;
+        return new CreatePathMarkerPacket(markerId, ownerId, startPos, endPos, height, color, teamName, lifetimeTicks, isPreview, headingAngle, itemName);
     }
 
     public void handle(Supplier<NetworkEvent.Context> ctx) {
