@@ -273,15 +273,8 @@ public class MarkerRenderer {
             var font = mc.font;
 
             // 上方：被标记实体名字
-            if (marker.targetEntityId != null && mc.level != null) {
-                for (var entity : mc.level.entitiesForRendering()) {
-                    if (marker.targetEntityId.equals(entity.getUUID())) {
-                        var name = entity.getDisplayName();
-                        int nameWidth = font.width(name);
-                        gui.drawString(font, name, x - nameWidth / 2, y - 8 - font.lineHeight - 2, 0xFFFFFFFF);
-                        break;
-                    }
-                }
+            if (marker.targetEntityId != null) {
+                drawEntityName(gui, font, marker, mc, x, y - 8 - font.lineHeight - 2);
             }
 
             // 下方：标记者名字（稍小）
@@ -342,6 +335,25 @@ public class MarkerRenderer {
                 gui.drawString(font, marker.itemName, -itemWidth / 2, 2, 0xFFFFFF55);
             }
             gui.pose().popPose();
+        }
+    }
+
+    private static void drawEntityName(GuiGraphics gui, net.minecraft.client.gui.Font font, ClientPointMarker marker, Minecraft mc, int x, int y) {
+        if (mc.level != null) {
+            for (var entity : mc.level.entitiesForRendering()) {
+                if (marker.targetEntityId.equals(entity.getUUID())) {
+                    var name = entity.getDisplayName();
+                    int nameWidth = font.width(name);
+                    gui.drawString(font, name, x - nameWidth / 2, y, 0xFFFFFFFF);
+                    return;
+                }
+            }
+        }
+        // 超视距 fallback：使用服务器快照，浅灰色，前后加 -
+        if (marker.entityName != null && !marker.entityName.isEmpty()) {
+            String fallback = "-" + marker.entityName + "-";
+            int nameWidth = font.width(fallback);
+            gui.drawString(font, fallback, x - nameWidth / 2, y, 0xFFAAAAAA);
         }
     }
 
@@ -588,6 +600,7 @@ public class MarkerRenderer {
         float screenY = -1f;
         boolean screenVisible = false;
 
+        final String entityName;
         final String itemName;
 
         ClientPointMarker(CreatePointMarkerPacket packet) {
@@ -600,6 +613,7 @@ public class MarkerRenderer {
             this.remainingTicks = packet.lifetimeTicks();
             this.age = 0;
             this.targetEntityId = packet.targetEntityId();
+            this.entityName = packet.entityName();
             this.itemName = packet.itemName();
         }
 
