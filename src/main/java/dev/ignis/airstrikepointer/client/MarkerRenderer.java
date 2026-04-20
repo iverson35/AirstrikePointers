@@ -8,6 +8,7 @@ import dev.ignis.airstrikepointer.network.CreatePathMarkerPacket;
 import dev.ignis.airstrikepointer.network.CreatePointMarkerPacket;
 import dev.ignis.airstrikepointer.network.UpdatePointMarkerPacket;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
@@ -15,11 +16,14 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RenderGuiEvent;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import org.joml.Matrix4f;
 import org.joml.Quaternionf;
+import org.joml.Vector4f;
 
 import java.util.*;
 
@@ -70,6 +74,11 @@ public class MarkerRenderer {
     private static final Map<UUID, Vec3> entityPositionCache = new HashMap<>();
     private static final Set<UUID> trackedEntityIds = new HashSet<>();
     private static int lastCacheUpdateTick = -1;
+
+    // Ping Wheel 方式测试渲染：固定在 (0, -32, 0) 的屏幕坐标
+    private static float testScreenX = -1f;
+    private static float testScreenY = -1f;
+    private static boolean testScreenVisible = false;
 
     public static void addPointMarker(CreatePointMarkerPacket packet) {
         if (shouldShowMarker(packet.ownerId(), packet.teamName())) {
@@ -210,6 +219,36 @@ public class MarkerRenderer {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null) return;
 
+        // ===== Ping Wheel 方式：计算固定测试点 (0, -32, 0) 的屏幕坐标 =====
+        {
+            var camera = event.getCamera();
+            Vec3 worldPos = new Vec3(0, -32, 0);
+
+            Matrix4f modelView = new Matrix4f(event.getPoseStack().last().pose());
+            Matrix4f projection = new Matrix4f(event.getProjectionMatrix());
+
+            Vector4f pos = new Vector4f(
+                    (float) (worldPos.x - camera.getPosition().x),
+                    (float) (worldPos.y - camera.getPosition().y),
+                    (float) (worldPos.z - camera.getPosition().z),
+                    1f
+            );
+
+            pos.mul(modelView);
+            pos.mul(projection);
+
+            float depth = pos.w;
+            if (depth != 0) {
+                pos.div(depth);
+            }
+
+            var window = mc.getWindow();
+            testScreenX = window.getGuiScaledWidth() * (0.5f + pos.x * 0.5f);
+            testScreenY = window.getGuiScaledHeight() * (0.5f - pos.y * 0.5f);
+            testScreenVisible = depth > 0;
+        }
+        // ===== 结束 =====
+
         PoseStack poseStack = event.getPoseStack();
         Vec3 cameraPos = event.getCamera().getPosition();
 
@@ -231,6 +270,20 @@ public class MarkerRenderer {
 
         bufferSource.endBatch(RenderType.lines());
         poseStack.popPose();
+    }
+
+    @SubscribeEvent
+    public static void onRenderGuiPost(RenderGuiEvent.Post event) {
+        if (!testScreenVisible) {
+            return;
+        }
+
+        GuiGraphics gui = event.getGuiGraphics();
+        int x = (int) testScreenX;
+        int y = (int) testScreenY;
+        int size = 10;
+
+        gui.fill(x - size / 2, y - size / 2, x + size / 2, y + size / 2, 0xFFFF0000);
     }
 
     private static void renderPointMarker(PoseStack poseStack, MultiBufferSource bufferSource, ClientPointMarker marker) {
