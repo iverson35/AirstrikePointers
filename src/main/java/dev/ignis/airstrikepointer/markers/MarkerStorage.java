@@ -85,7 +85,7 @@ public class MarkerStorage extends SavedData {
 
         UUID markerId = UUID.randomUUID();
         int lifetimeTicks = Config.MARKER_LIFETIME_SECONDS.get() * 20;
-        PointMarker marker = new PointMarker(markerId, ownerId, position, color, teamName, lifetimeTicks, targetEntityId, itemName);
+        PointMarker marker = new PointMarker(markerId, ownerId, position, color, teamName, lifetimeTicks, targetEntityId, itemName, entityName);
         pointMarkers.put(markerId, marker);
         incrementPlayerCount(ownerId);
         setDirty();
@@ -269,7 +269,8 @@ public class MarkerStorage extends SavedData {
             pointData.add(new SyncMarkersPacket.PointMarkerData(
                     marker.getMarkerId(), marker.getOwnerId(), marker.getPosition(),
                     marker.getColor(), marker.getTeamName(), marker.getRemainingTicks(),
-                    marker.getTargetEntityId(), marker.getItemName()
+                    marker.getTargetEntityId(), marker.getItemName(),
+                    marker.getEntityName(), marker.isEntityLost()
             ));
         }
 

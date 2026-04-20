@@ -18,7 +18,9 @@ public record SyncMarkersPacket(
             UUID markerId, UUID ownerId, Vec3 position,
             int color, String teamName, int remainingTicks,
             UUID targetEntityId,
-            String itemName
+            String itemName,
+            String entityName,
+            boolean entityLost
     ) {}
 
     public record PathMarkerData(
@@ -43,6 +45,8 @@ public record SyncMarkersPacket(
                 buf.writeUUID(data.targetEntityId);
             }
             buf.writeUtf(data.itemName != null ? data.itemName : "");
+            buf.writeUtf(data.entityName != null ? data.entityName : "");
+            buf.writeBoolean(data.entityLost);
         }
 
         buf.writeInt(pathMarkers.size());
@@ -79,7 +83,10 @@ public record SyncMarkersPacket(
             UUID targetEntityId = buf.readBoolean() ? buf.readUUID() : null;
             String itemName = buf.readUtf();
             if (itemName.isEmpty()) itemName = null;
-            points.add(new PointMarkerData(markerId, ownerId, position, color, teamName, remainingTicks, targetEntityId, itemName));
+            String entityName = buf.readUtf();
+            if (entityName.isEmpty()) entityName = null;
+            boolean entityLost = buf.readBoolean();
+            points.add(new PointMarkerData(markerId, ownerId, position, color, teamName, remainingTicks, targetEntityId, itemName, entityName, entityLost));
         }
 
         int pathCount = buf.readInt();
@@ -111,11 +118,15 @@ public record SyncMarkersPacket(
         ctx.get().enqueueWork(() -> {
             MarkerRenderer.clearAllMarkers();
             for (PointMarkerData data : pointMarkers) {
+                int targetType = data.targetEntityId != null ? CreatePointMarkerPacket.TARGET_ENTITY : CreatePointMarkerPacket.TARGET_BLOCK;
                 MarkerRenderer.addPointMarker(new CreatePointMarkerPacket(
                         data.markerId, data.ownerId, data.position,
                         data.color, data.teamName, data.remainingTicks,
-                        CreatePointMarkerPacket.TARGET_BLOCK, "", data.targetEntityId, data.itemName
+                        targetType, data.entityName != null ? data.entityName : "", data.targetEntityId, data.itemName
                 ));
+                if (data.entityLost) {
+                    MarkerRenderer.updateEntityLost(new UpdateEntityLostPacket(data.markerId, true));
+                }
             }
             for (PathMarkerData data : pathMarkers) {
                 MarkerRenderer.addPathMarker(new CreatePathMarkerPacket(
