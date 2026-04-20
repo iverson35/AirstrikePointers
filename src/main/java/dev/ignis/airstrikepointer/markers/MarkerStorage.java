@@ -78,14 +78,14 @@ public class MarkerStorage extends SavedData {
         return storage;
     }
 
-    public PointMarker createPointMarker(UUID ownerId, Vec3 position, int color, String teamName, int targetType, String entityName, UUID targetEntityId, String playerName) {
+    public PointMarker createPointMarker(UUID ownerId, Vec3 position, int color, String teamName, int targetType, String entityName, UUID targetEntityId, String playerName, String itemName) {
         if (getPlayerMarkerCount(ownerId) >= Config.MAX_MARKERS_PER_PLAYER.get()) {
             return null;
         }
 
         UUID markerId = UUID.randomUUID();
         int lifetimeTicks = Config.MARKER_LIFETIME_SECONDS.get() * 20;
-        PointMarker marker = new PointMarker(markerId, ownerId, position, color, teamName, lifetimeTicks, targetEntityId);
+        PointMarker marker = new PointMarker(markerId, ownerId, position, color, teamName, lifetimeTicks, targetEntityId, itemName);
         pointMarkers.put(markerId, marker);
         incrementPlayerCount(ownerId);
         setDirty();
@@ -99,7 +99,7 @@ public class MarkerStorage extends SavedData {
             }
         }
 
-        broadcastToAll(new CreatePointMarkerPacket(markerId, ownerId, position, color, teamName, lifetimeTicks, targetType, entityName, targetEntityId));
+        broadcastToAll(new CreatePointMarkerPacket(markerId, ownerId, position, color, teamName, lifetimeTicks, targetType, entityName, targetEntityId, itemName));
         broadcastMarkerNotification(marker, playerName, targetType, entityName);
         return marker;
     }
@@ -252,7 +252,7 @@ public class MarkerStorage extends SavedData {
             pointData.add(new SyncMarkersPacket.PointMarkerData(
                     marker.getMarkerId(), marker.getOwnerId(), marker.getPosition(),
                     marker.getColor(), marker.getTeamName(), marker.getRemainingTicks(),
-                    marker.getTargetEntityId()
+                    marker.getTargetEntityId(), marker.getItemName()
             ));
         }
 

@@ -296,6 +296,10 @@ public class MarkerRenderer {
             gui.pose().translate(x, y + 8 + 4, 0);
             gui.pose().scale(0.75f, 0.75f, 1f);
             gui.drawString(font, ownerName, -ownerWidth / 2, 0, 0xFFAAAAAA);
+            if (marker.itemName != null && !marker.itemName.isEmpty()) {
+                int itemWidth = font.width(marker.itemName);
+                gui.drawString(font, marker.itemName, -itemWidth / 2, font.lineHeight + 2, 0xFFFFFF55);
+            }
             gui.pose().popPose();
         }
     }
@@ -498,6 +502,8 @@ public class MarkerRenderer {
         float screenY = -1f;
         boolean screenVisible = false;
 
+        final String itemName;
+
         ClientPointMarker(CreatePointMarkerPacket packet) {
             this.markerId = packet.markerId();
             this.ownerId = packet.ownerId();
@@ -508,6 +514,7 @@ public class MarkerRenderer {
             this.remainingTicks = packet.lifetimeTicks();
             this.age = 0;
             this.targetEntityId = packet.targetEntityId();
+            this.itemName = packet.itemName();
         }
 
         void tick() {
