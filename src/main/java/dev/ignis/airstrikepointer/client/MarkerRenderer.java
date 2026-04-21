@@ -355,12 +355,17 @@ public class MarkerRenderer {
     }
 
     private static void drawEntityName(GuiGraphics gui, net.minecraft.client.gui.Font font, ClientPointMarker marker, Minecraft mc, int x, int y) {
+        gui.pose().pushPose();
+        gui.pose().translate(x, y, 0);
+        gui.pose().scale(0.75f, 0.75f, 1f);
+
         if (mc.level != null) {
             for (var entity : mc.level.entitiesForRendering()) {
                 if (marker.targetEntityId.equals(entity.getUUID())) {
                     var name = entity.getDisplayName();
                     int nameWidth = font.width(name);
-                    gui.drawString(font, name, x - nameWidth / 2, y, 0xFFFFFFFF);
+                    gui.drawString(font, name, -nameWidth / 2, 0, 0xFFFFFFFF);
+                    gui.pose().popPose();
                     return;
                 }
             }
@@ -369,15 +374,17 @@ public class MarkerRenderer {
         if (marker.entityLost && marker.entityName != null && !marker.entityName.isEmpty()) {
             String fallback = "X" + marker.entityName + "X";
             int nameWidth = font.width(fallback);
-            gui.drawString(font, fallback, x - nameWidth / 2, y, 0xFFAAAAAA);
+            gui.drawString(font, fallback, -nameWidth / 2, 0, 0xFFAAAAAA);
+            gui.pose().popPose();
             return;
         }
         // 超视距 fallback：使用服务器快照，浅灰色，前后加 -
         if (marker.entityName != null && !marker.entityName.isEmpty()) {
             String fallback = "-" + marker.entityName + "-";
             int nameWidth = font.width(fallback);
-            gui.drawString(font, fallback, x - nameWidth / 2, y, 0xFFAAAAAA);
+            gui.drawString(font, fallback, -nameWidth / 2, 0, 0xFFAAAAAA);
         }
+        gui.pose().popPose();
     }
 
     private static void projectPathMarkerToScreen(ClientPathMarker marker, RenderLevelStageEvent event) {
