@@ -274,7 +274,12 @@ public class MarkerRenderer {
 
             // 绘制纹理（实体标记与方块标记使用不同纹理）
             ResourceLocation texture = marker.targetEntityId != null ? POINT_TEXTURE : BLOCK_POINT_TEXTURE;
-            RenderSystem.setShaderColor(r, g, b, 0.8f);
+            float alpha = 0.8f;
+            // 剩余时间小于 1/4 时每秒闪烁 2 次（周期 10 ticks）
+            if (marker.remainingTicks < marker.lifetimeTicks / 4) {
+                alpha = (marker.age % 10) < 5 ? 0.8f : 0.15f;
+            }
+            RenderSystem.setShaderColor(r, g, b, alpha);
             RenderSystem.enableBlend();
             gui.blit(texture, x - 8, y - 8, 16, 16, 0f, 0f, 32, 32, 32, 32);
             RenderSystem.disableBlend();
@@ -611,6 +616,7 @@ public class MarkerRenderer {
         final int color;
         final String teamName;
         int remainingTicks;
+        final int lifetimeTicks;
         int age;
 
         // GUI投影缓存
@@ -630,6 +636,7 @@ public class MarkerRenderer {
             this.color = packet.color();
             this.teamName = packet.teamName();
             this.remainingTicks = packet.lifetimeTicks();
+            this.   lifetimeTicks = packet.lifetimeTicks();
             this.age = 0;
             this.targetEntityId = packet.targetEntityId();
             this.entityLost = false;
