@@ -14,6 +14,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
@@ -399,7 +400,7 @@ public class MarkerRenderer {
         Vec3 end = entity.position().add(0, entity.getEyeHeight() * 0.5, 0);
         var result = mc.level.clip(new net.minecraft.world.level.ClipContext(
                 start, end,
-                net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                ClipContext.Block.VISUAL,
                 net.minecraft.world.level.ClipContext.Fluid.NONE,
                 mc.player
         ));
