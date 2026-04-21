@@ -362,6 +362,12 @@ public class MarkerRenderer {
         if (mc.level != null) {
             for (var entity : mc.level.entitiesForRendering()) {
                 if (marker.targetEntityId.equals(entity.getUUID())) {
+                    // 距离在64格以内且视线未被遮挡时，不显示实体名字
+                    double dist = entity.distanceTo(mc.player);
+                    if (dist <= 64 && hasLineOfSight(mc, entity)) {
+                        gui.pose().popPose();
+                        return;
+                    }
                     var name = entity.getDisplayName();
                     int nameWidth = font.width(name);
                     gui.drawString(font, name, -nameWidth / 2, 0, 0xFFFFFFFF);
@@ -385,6 +391,19 @@ public class MarkerRenderer {
             gui.drawString(font, fallback, -nameWidth / 2, 0, 0xFFAAAAAA);
         }
         gui.pose().popPose();
+    }
+
+    private static boolean hasLineOfSight(Minecraft mc, net.minecraft.world.entity.Entity entity) {
+        if (mc.level == null || mc.player == null) return false;
+        Vec3 start = mc.gameRenderer.getMainCamera().getPosition();
+        Vec3 end = entity.position().add(0, entity.getEyeHeight() * 0.5, 0);
+        var result = mc.level.clip(new net.minecraft.world.level.ClipContext(
+                start, end,
+                net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                net.minecraft.world.level.ClipContext.Fluid.NONE,
+                mc.player
+        ));
+        return result.getType() == net.minecraft.world.phys.HitResult.Type.MISS;
     }
 
     private static void projectPathMarkerToScreen(ClientPathMarker marker, RenderLevelStageEvent event) {
