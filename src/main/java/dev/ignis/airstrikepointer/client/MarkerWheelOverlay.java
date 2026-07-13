@@ -50,6 +50,7 @@ public class MarkerWheelOverlay {
     private static final int ICON_SIZE = 20; // 渲染图标大小
     private static final int ICON_SIZE_SELECTED = 26; // 选中图标放大
     private static final float ANGLE_PER_ICON = 360.0f / ICON_COUNT; // 45°
+    @SuppressWarnings("removal")
     private static final ResourceLocation CURSOR_TEXTURE = new ResourceLocation(AirstrikePointers.MODID, "textures/gui/wheel_cursor.png");
     private static final int CURSOR_SIZE = 16;
 
