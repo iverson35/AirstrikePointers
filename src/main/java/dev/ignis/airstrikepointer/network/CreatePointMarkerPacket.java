@@ -21,7 +21,8 @@ public record CreatePointMarkerPacket(
         String itemName,
         String customTitle,
         String customDescription,
-        String iconId
+        String iconId,
+        boolean guidanceDisabled
 ) {
     public static final int TARGET_MISS = 0;
     public static final int TARGET_BLOCK = 1;
@@ -46,6 +47,7 @@ public record CreatePointMarkerPacket(
         buf.writeUtf(customTitle != null ? customTitle : "");
         buf.writeUtf(customDescription != null ? customDescription : "");
         buf.writeUtf(iconId != null ? iconId : "");
+        buf.writeBoolean(guidanceDisabled);
     }
 
     public static CreatePointMarkerPacket decode(FriendlyByteBuf buf) {
@@ -66,7 +68,8 @@ public record CreatePointMarkerPacket(
         if (customDescription.isEmpty()) customDescription = null;
         String iconId = buf.readUtf();
         if (iconId.isEmpty()) iconId = null;
-        return new CreatePointMarkerPacket(markerId, ownerId, position, color, teamName, lifetimeTicks, targetType, entityName, targetEntityId, itemName, customTitle, customDescription, iconId);
+        boolean guidanceDisabled = buf.readBoolean();
+        return new CreatePointMarkerPacket(markerId, ownerId, position, color, teamName, lifetimeTicks, targetType, entityName, targetEntityId, itemName, customTitle, customDescription, iconId, guidanceDisabled);
     }
 
     public void handle(Supplier<NetworkEvent.Context> ctx) {

@@ -14,24 +14,29 @@ public class PointMarker extends MarkerData {
     private final String customTitle;
     private final String customDescription;
     private boolean entityLost;
+    private boolean guidanceDisabled;
 
     public PointMarker(UUID markerId, UUID ownerId, Vec3 position, int color, String teamName, int lifetimeTicks) {
-        this(markerId, ownerId, position, color, teamName, lifetimeTicks, null, null, null, null, null, null);
+        this(markerId, ownerId, position, color, teamName, lifetimeTicks, null, null, null, null, null, null, false);
     }
 
     public PointMarker(UUID markerId, UUID ownerId, Vec3 position, int color, String teamName, int lifetimeTicks, UUID targetEntityId) {
-        this(markerId, ownerId, position, color, teamName, lifetimeTicks, targetEntityId, null, null, null, null, null);
+        this(markerId, ownerId, position, color, teamName, lifetimeTicks, targetEntityId, null, null, null, null, null, false);
     }
 
     public PointMarker(UUID markerId, UUID ownerId, Vec3 position, int color, String teamName, int lifetimeTicks, UUID targetEntityId, String itemName) {
-        this(markerId, ownerId, position, color, teamName, lifetimeTicks, targetEntityId, null, itemName, null, null, null);
+        this(markerId, ownerId, position, color, teamName, lifetimeTicks, targetEntityId, null, itemName, null, null, null, false);
     }
 
     public PointMarker(UUID markerId, UUID ownerId, Vec3 position, int color, String teamName, int lifetimeTicks, UUID targetEntityId, String itemName, String entityName) {
-        this(markerId, ownerId, position, color, teamName, lifetimeTicks, targetEntityId, null, itemName, entityName, null, null);
+        this(markerId, ownerId, position, color, teamName, lifetimeTicks, targetEntityId, null, itemName, entityName, null, null, false);
     }
 
     public PointMarker(UUID markerId, UUID ownerId, Vec3 position, int color, String teamName, int lifetimeTicks, UUID targetEntityId, String iconId, String itemName, String entityName, String customTitle, String customDescription) {
+        this(markerId, ownerId, position, color, teamName, lifetimeTicks, targetEntityId, iconId, itemName, entityName, customTitle, customDescription, false);
+    }
+
+    public PointMarker(UUID markerId, UUID ownerId, Vec3 position, int color, String teamName, int lifetimeTicks, UUID targetEntityId, String iconId, String itemName, String entityName, String customTitle, String customDescription, boolean guidanceDisabled) {
         super(markerId, ownerId, color, teamName, lifetimeTicks);
         this.position = position;
         this.targetEntityId = targetEntityId;
@@ -41,6 +46,7 @@ public class PointMarker extends MarkerData {
         this.customTitle = customTitle;
         this.customDescription = customDescription;
         this.entityLost = false;
+        this.guidanceDisabled = guidanceDisabled;
     }
 
     public Vec3 getPosition() { return position; }
@@ -53,6 +59,8 @@ public class PointMarker extends MarkerData {
     public String getCustomDescription() { return customDescription; }
     public boolean isEntityLost() { return entityLost; }
     public void setEntityLost(boolean lost) { this.entityLost = lost; }
+    public boolean isGuidanceDisabled() { return guidanceDisabled; }
+    public void setGuidanceDisabled(boolean disabled) { this.guidanceDisabled = disabled; }
 
     public boolean isTrackingEntity() { return targetEntityId != null; }
 
@@ -83,6 +91,7 @@ public class PointMarker extends MarkerData {
             tag.putString("customDescription", customDescription);
         }
         tag.putString("iconId", iconId);
+        tag.putBoolean("guidanceDisabled", guidanceDisabled);
         return tag;
     }
 
@@ -112,6 +121,7 @@ public class PointMarker extends MarkerData {
             tag.putString("customDescription", customDescription);
         }
         tag.putString("iconId", iconId);
+        tag.putBoolean("guidanceDisabled", guidanceDisabled);
     }
 
     public static PointMarker load(CompoundTag tag) {
@@ -122,6 +132,8 @@ public class PointMarker extends MarkerData {
         String customDescription = tag.contains("customDescription") ? tag.getString("customDescription") : null;
         // 向后兼容：旧数据没有 iconId 时根据 targetEntityId 推断
         String iconId = tag.contains("iconId") ? tag.getString("iconId") : null;
+        // 向后兼容：旧数据没有 guidanceDisabled 时默认为 false
+        boolean guidanceDisabled = tag.contains("guidanceDisabled") && tag.getBoolean("guidanceDisabled");
         return new PointMarker(
                 tag.getUUID("markerId"),
                 tag.getUUID("ownerId"),
@@ -134,7 +146,8 @@ public class PointMarker extends MarkerData {
                 itemName,
                 entityName,
                 customTitle,
-                customDescription
+                customDescription,
+                guidanceDisabled
         );
     }
 }
