@@ -6,7 +6,8 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.Team;
@@ -90,6 +91,9 @@ public record CreatePocketMarkerC2SPacket(
                 player.displayClientMessage(
                         Component.translatable("message.airstrikepointers.point_marked")
                                 .withStyle(ChatFormatting.GREEN), true);
+                level.playSound(null, player.getX(), player.getY(), player.getZ(),
+                        SoundEvents.NOTE_BLOCK_BIT.value(),
+                        SoundSource.PLAYERS, 1.0F, 1.0F);
             } else {
                 player.displayClientMessage(
                         Component.translatable("message.airstrikepointers.marker_limit_reached")

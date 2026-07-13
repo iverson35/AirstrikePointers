@@ -187,6 +187,9 @@ public class PocketLaserPointerItem extends Item {
 
         if (marker != null) {
             player.displayClientMessage(Component.translatable("message.airstrikepointers.point_marked").withStyle(ChatFormatting.GREEN), true);
+            level.playSound(null, player.getX(), player.getY(), player.getZ(),
+                    net.minecraft.sounds.SoundEvents.NOTE_BLOCK_BIT.value(),
+                    net.minecraft.sounds.SoundSource.PLAYERS, 1.0F, 1.0F);
         } else {
             player.displayClientMessage(Component.translatable("message.airstrikepointers.marker_limit_reached").withStyle(ChatFormatting.RED), true);
         }

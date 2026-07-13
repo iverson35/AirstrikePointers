@@ -9,6 +9,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.BlockHitResult;
@@ -101,6 +102,10 @@ public class MarkerWheelOverlay {
         holdTicks = useDuration - timeLeft;
 
         if (holdTicks >= getWheelThresholdTicks()) {
+            if (!wheelActive) {
+                // 轮盘刚激活：播放音效
+                mc.player.playSound(SoundEvents.LEVER_CLICK, 1.0F, 1.0F);
+            }
             wheelActive = true;
             // 根据鼠标相对于原点的偏移量更新选中项（原点在 use() 时已捕获）
             updateSelection(mc);
