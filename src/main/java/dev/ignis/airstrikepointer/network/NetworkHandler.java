@@ -36,5 +36,7 @@ public class NetworkHandler {
                 UpdateEntityLostPacket::encode, UpdateEntityLostPacket::decode, UpdateEntityLostPacket::handle);
         CHANNEL.registerMessage(packetId++, RequestClearMarkersPacket.class,
                 RequestClearMarkersPacket::encode, RequestClearMarkersPacket::decode, RequestClearMarkersPacket::handle);
+        CHANNEL.registerMessage(packetId++, CreatePocketMarkerC2SPacket.class,
+                CreatePocketMarkerC2SPacket::encode, CreatePocketMarkerC2SPacket::decode, CreatePocketMarkerC2SPacket::handle);
     }
 }

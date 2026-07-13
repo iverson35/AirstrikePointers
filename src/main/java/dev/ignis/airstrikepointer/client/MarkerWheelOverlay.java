@@ -1,0 +1,289 @@
+package dev.ignis.airstrikepointer.client;
+
+import com.mojang.blaze3d.systems.RenderSystem;
+import dev.ignis.airstrikepointer.AirstrikePointers;
+import dev.ignis.airstrikepointer.items.ModItems;
+import dev.ignis.airstrikepointer.markers.PointMarkerIcon;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RenderGuiOverlayEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
+
+/**
+ * 袖珍激光笔长按右键时显示的标记轮盘。
+ * 8 个 icon_* 图标沿圆周排列，中央为 icon_dot。
+ * 玩家移动鼠标选择图标，松开右键时创建对应标记。
+ */
+@Mod.EventBusSubscriber(modid = AirstrikePointers.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
+public class MarkerWheelOverlay {
+
+    // 轮盘图标顺序（逆时针，从正上方开始）
+    private static final String[] WHEEL_ICONS = {
+            PointMarkerIcon.ICON_DANGER_ID,    // 0°   正上方
+            PointMarkerIcon.ICON_CAUTION_ID,   // 45°  右上
+            PointMarkerIcon.ICON_SATISFIED_ID, // 90°  正右
+            PointMarkerIcon.ICON_LIKE_ID,      // 135° 右下
+            PointMarkerIcon.ICON_ATTACK_ID,    // 180° 正下
+            PointMarkerIcon.ICON_DEFEND_ID,    // 225° 左下
+            PointMarkerIcon.ICON_PUZZLED_ID,   // 270° 正左
+            PointMarkerIcon.ICON_REFUSE_ID,    // 315° 左上
+    };
+
+    private static final int ICON_COUNT = WHEEL_ICONS.length; // 8
+    private static final float WHEEL_RADIUS = 70.0f;  // 圆周半径
+    private static final float CENTER_DEAD_ZONE = 22.0f; // 中心死区半径（在此范围内选中 dot）
+    private static final int ICON_SIZE = 20; // 渲染图标大小
+    private static final int ICON_SIZE_SELECTED = 26; // 选中图标放大
+    private static final float ANGLE_PER_ICON = 360.0f / ICON_COUNT; // 45°
+
+    // 轮盘显示阈值（ticks），约 0.5 秒
+    public static final int WHEEL_THRESHOLD_TICKS = 10;
+
+    // 状态
+    private static boolean wheelActive = false;
+    private static int selectedIndex = -1; // -1 = center dot, 0-7 = outer icons
+    private static int holdTicks = 0;
+
+    /**
+     * 每 tick 更新轮盘状态。
+     */
+    @SubscribeEvent
+    public static void onClientTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) {
+            reset();
+            return;
+        }
+
+        // 检查是否正在使用袖珍激光笔
+        boolean holdingPocketLaser = mc.player.isUsingItem()
+                && mc.player.getUseItem().is(ModItems.POCKET_LASER_POINTER.get());
+
+        if (!holdingPocketLaser) {
+            reset();
+            return;
+        }
+
+        // 计算已持有时长
+        int useDuration = mc.player.getUseItem().getUseDuration();
+        int timeLeft = mc.player.getUseItemRemainingTicks();
+        holdTicks = useDuration - timeLeft;
+
+        if (holdTicks >= WHEEL_THRESHOLD_TICKS) {
+            wheelActive = true;
+            // 根据鼠标位置更新选中项
+            updateSelection(mc);
+        } else {
+            wheelActive = false;
+            selectedIndex = -1;
+        }
+    }
+
+    /**
+     * 根据鼠标位置更新选中的图标。
+     */
+    private static void updateSelection(Minecraft mc) {
+        if (mc.getWindow() == null) return;
+
+        int screenWidth = mc.getWindow().getGuiScaledWidth();
+        int screenHeight = mc.getWindow().getGuiScaledHeight();
+        int centerX = screenWidth / 2;
+        int centerY = screenHeight / 2;
+
+        double mouseX = mc.mouseHandler.xpos();
+        double mouseY = mc.mouseHandler.ypos();
+
+        // 转换到 GUI 坐标
+        double guiMouseX = mouseX * (double) screenWidth / (double) mc.getWindow().getScreenWidth();
+        double guiMouseY = mouseY * (double) screenHeight / (double) mc.getWindow().getScreenHeight();
+
+        double dx = guiMouseX - centerX;
+        double dy = guiMouseY - centerY;
+        double dist = Math.sqrt(dx * dx + dy * dy);
+
+        // 中心死区：选中 dot
+        if (dist < CENTER_DEAD_ZONE) {
+            selectedIndex = -1;
+            return;
+        }
+
+        // 计算角度（0° = 正上方，顺时针）
+        // Minecraft GUI: Y 轴向下，所以用 atan2(-dy, dx) 得到标准角度
+        double angleDeg = Math.toDegrees(Math.atan2(-dy, dx));
+        // 转换成 0° = 正上方，顺时针
+        angleDeg = 90 - angleDeg;
+        if (angleDeg < 0) angleDeg += 360;
+        if (angleDeg >= 360) angleDeg -= 360;
+
+        // 计算对应的扇形索引
+        // 扇形 0 对应 -ANGLE_PER_ICON/2 到 +ANGLE_PER_ICON/2 (即 337.5° ~ 22.5°)
+        float sectorAngle = (float) angleDeg + ANGLE_PER_ICON / 2.0f;
+        if (sectorAngle >= 360) sectorAngle -= 360;
+        int index = (int) (sectorAngle / ANGLE_PER_ICON);
+        selectedIndex = Math.min(index, ICON_COUNT - 1);
+    }
+
+    /**
+     * 渲染轮盘到 GUI 覆盖层。
+     */
+    @SubscribeEvent
+    public static void onRenderOverlay(RenderGuiOverlayEvent.Post event) {
+        if (!wheelActive) return;
+
+        Minecraft mc = Minecraft.getInstance();
+        GuiGraphics gui = event.getGuiGraphics();
+        int screenWidth = gui.guiWidth();
+        int screenHeight = gui.guiHeight();
+        int centerX = screenWidth / 2;
+        int centerY = screenHeight / 2;
+
+        var pose = gui.pose();
+        pose.pushPose();
+
+        // 绘制半透明背景圆盘
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 0.15f);
+        gui.fill((int) (centerX - WHEEL_RADIUS - 30), (int) (centerY - WHEEL_RADIUS - 30),
+                (int) (centerX + WHEEL_RADIUS + 30), (int) (centerY + WHEEL_RADIUS + 30),
+                0x20FFFFFF);
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+        // 绘制连接线（从中心到各图标）
+        for (int i = 0; i < ICON_COUNT; i++) {
+            if (i == selectedIndex) continue; // 选中的稍后画
+            float angle = (float) Math.toRadians(i * ANGLE_PER_ICON - 90);
+            int ix = centerX + (int) (Math.cos(angle) * WHEEL_RADIUS);
+            int iy = centerY + (int) (Math.sin(angle) * WHEEL_RADIUS);
+            drawLine(gui, centerX, centerY, ix, iy, 0x30FFFFFF);
+        }
+
+        // 绘制选中图标的连接线（高亮）
+        if (selectedIndex >= 0) {
+            float angle = (float) Math.toRadians(selectedIndex * ANGLE_PER_ICON - 90);
+            int ix = centerX + (int) (Math.cos(angle) * WHEEL_RADIUS);
+            int iy = centerY + (int) (Math.sin(angle) * WHEEL_RADIUS);
+            drawLine(gui, centerX, centerY, ix, iy, 0x80FFFFFF);
+        }
+
+        // 绘制 8 个外围图标
+        for (int i = 0; i < ICON_COUNT; i++) {
+            boolean isSelected = (i == selectedIndex);
+            float angle = (float) Math.toRadians(i * ANGLE_PER_ICON - 90);
+            int ix = centerX + (int) (Math.cos(angle) * WHEEL_RADIUS);
+            int iy = centerY + (int) (Math.sin(angle) * WHEEL_RADIUS);
+            int size = isSelected ? ICON_SIZE_SELECTED : ICON_SIZE;
+            float alpha = isSelected ? 1.0f : 0.7f;
+
+            ResourceLocation texture = PointMarkerIcon.getTexture(WHEEL_ICONS[i]);
+            renderIcon(gui, texture, ix - size / 2, iy - size / 2, size, alpha);
+
+            // 选中时绘制高亮边框
+            if (isSelected) {
+                gui.fill(ix - size / 2 - 2, iy - size / 2 - 2, ix + size / 2 + 2, iy - size / 2, 0xFFFFFFFF);
+                gui.fill(ix - size / 2 - 2, iy + size / 2, ix + size / 2 + 2, iy + size / 2 + 2, 0xFFFFFFFF);
+                gui.fill(ix - size / 2 - 2, iy - size / 2, ix - size / 2, iy + size / 2, 0xFFFFFFFF);
+                gui.fill(ix + size / 2, iy - size / 2, ix + size / 2 + 2, iy + size / 2, 0xFFFFFFFF);
+            }
+        }
+
+        // 绘制中央 dot
+        boolean centerSelected = (selectedIndex == -1);
+        int dotSize = centerSelected ? ICON_SIZE_SELECTED : ICON_SIZE;
+        float dotAlpha = centerSelected ? 1.0f : 0.85f;
+        ResourceLocation dotTexture = PointMarkerIcon.getTexture(PointMarkerIcon.ICON_DOT_ID);
+        renderIcon(gui, dotTexture, centerX - dotSize / 2, centerY - dotSize / 2, dotSize, dotAlpha);
+
+        // 中央选中高亮边框
+        if (centerSelected) {
+            int cx = centerX, cy = centerY;
+            int hs = dotSize / 2;
+            gui.fill(cx - hs - 2, cy - hs - 2, cx + hs + 2, cy - hs, 0xFFFFFFFF);
+            gui.fill(cx - hs - 2, cy + hs, cx + hs + 2, cy + hs + 2, 0xFFFFFFFF);
+            gui.fill(cx - hs - 2, cy - hs, cx - hs, cy + hs, 0xFFFFFFFF);
+            gui.fill(cx + hs, cy - hs, cx + hs + 2, cy + hs, 0xFFFFFFFF);
+        }
+
+        // 绘制选中的图标名称标签
+        String labelText = getSelectedLabel();
+        if (!labelText.isEmpty()) {
+            int labelWidth = mc.font.width(labelText);
+            gui.drawCenteredString(mc.font, labelText, centerX, centerY + dotSize / 2 + 14, 0xFFFFFF);
+        }
+
+        pose.popPose();
+    }
+
+    /**
+     * 绘制一条细线。
+     */
+    private static void drawLine(GuiGraphics gui, int x1, int y1, int x2, int y2, int color) {
+        // 使用 fill 近似绘制（水平/垂直），或用多个小矩形近似斜线
+        int dx = Math.abs(x2 - x1);
+        int dy = Math.abs(y2 - y1);
+        int steps = Math.max(dx, dy);
+        if (steps == 0) return;
+
+        for (int i = 0; i <= steps; i++) {
+            int x = x1 + (x2 - x1) * i / steps;
+            int y = y1 + (y2 - y1) * i / steps;
+            gui.fill(x, y, x + 2, y + 2, color);
+        }
+    }
+
+    /**
+     * 渲染图标纹理。
+     */
+    private static void renderIcon(GuiGraphics gui, ResourceLocation texture, int x, int y, int size, float alpha) {
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, alpha);
+        gui.blit(texture, x, y, 0, 0, 0, size, size, size, size);
+        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+        RenderSystem.disableBlend();
+    }
+
+    /**
+     * 获取当前选中图标的显示标签。
+     */
+    private static String getSelectedLabel() {
+        String iconId;
+        if (selectedIndex == -1) {
+            iconId = PointMarkerIcon.ICON_DOT_ID;
+        } else if (selectedIndex >= 0 && selectedIndex < ICON_COUNT) {
+            iconId = WHEEL_ICONS[selectedIndex];
+        } else {
+            return "";
+        }
+        // 去掉 "icon_" 前缀显示
+        return iconId.replace("icon_", "");
+    }
+
+    // ===== 公共 API =====
+
+    /** 轮盘是否正在显示 */
+    public static boolean isWheelActive() {
+        return wheelActive;
+    }
+
+    /** 获取当前选中的图标 ID，-1 代表中央 dot */
+    public static String getSelectedIcon() {
+        if (selectedIndex == -1 || selectedIndex >= ICON_COUNT) {
+            return PointMarkerIcon.ICON_DOT_ID;
+        }
+        return WHEEL_ICONS[selectedIndex];
+    }
+
+    /** 重置轮盘状态 */
+    public static void reset() {
+        wheelActive = false;
+        selectedIndex = -1;
+        holdTicks = 0;
+    }
+}

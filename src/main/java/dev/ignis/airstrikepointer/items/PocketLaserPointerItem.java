@@ -1,8 +1,11 @@
 package dev.ignis.airstrikepointer.items;
 
+import dev.ignis.airstrikepointer.client.MarkerWheelOverlay;
 import dev.ignis.airstrikepointer.markers.MarkerStorage;
 import dev.ignis.airstrikepointer.markers.PointMarkerIcon;
+import dev.ignis.airstrikepointer.network.CreatePocketMarkerC2SPacket;
 import dev.ignis.airstrikepointer.network.CreatePointMarkerPacket;
+import dev.ignis.airstrikepointer.network.NetworkHandler;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -24,6 +27,7 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.Team;
 import net.minecraftforge.entity.PartEntity;
+import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import javax.annotation.Nullable;
@@ -91,17 +95,24 @@ public class PocketLaserPointerItem extends Item {
 
     @Override
     public void releaseUsing(ItemStack stack, Level level, LivingEntity livingEntity, int timeCharged) {
-        if (!(livingEntity instanceof Player player) || level.isClientSide) return;
+        if (!(livingEntity instanceof Player player)) return;
         if (player.isShiftKeyDown()) return;
 
         int useTicks = getUseDuration(stack) - timeCharged;
-        final int SHORT_PRESS_THRESHOLD = 5; // ~250ms
+        final int SHORT_PRESS_THRESHOLD = 5;
 
+        if (level.isClientSide) {
+            // 客户端：长按轮盘逻辑
+            if (useTicks >= MarkerWheelOverlay.WHEEL_THRESHOLD_TICKS && MarkerWheelOverlay.isWheelActive()) {
+                sendWheelMarker(player);
+            }
+            MarkerWheelOverlay.reset();
+            return;
+        }
+
+        // 服务端：仅处理短按（长按由 CreatePocketMarkerC2SPacket 处理）
         if (useTicks < SHORT_PRESS_THRESHOLD) {
-            // 短按：执行标记逻辑
             performMarking(player, stack);
-        } else {
-            // 长按：留空实现
         }
     }
 
@@ -239,6 +250,55 @@ public class PocketLaserPointerItem extends Item {
 
         // 非生物实体（箭、物品展示框等）默认 icon_dot
         return PointMarkerIcon.ICON_DOT_ID;
+    }
+
+    /**
+     * 客户端：轮盘模式下发送标记请求到服务端。
+     * 在客户端执行射线检测，将结果和选中的图标 ID 打包发送。
+     */
+    private void sendWheelMarker(Player player) {
+        Level level = player.level();
+        String selectedIcon = MarkerWheelOverlay.getSelectedIcon();
+
+        Vec3 eyePos = player.getEyePosition(0.0f);
+        Vec3 lookVec = player.getViewVector(0.0f);
+        Vec3 endPos = eyePos.add(lookVec.x * 300.0, lookVec.y * 300.0, lookVec.z * 300.0);
+
+        var entityHitResult = net.minecraft.world.entity.projectile.ProjectileUtil.getEntityHitResult(
+                level, player, eyePos, endPos,
+                player.getBoundingBox().expandTowards(lookVec.scale(300.0)).inflate(1.0),
+                entity -> !entity.isSpectator() && entity.isPickable()
+        );
+
+        Vec3 targetPos;
+        int targetType;
+        String entityName = "";
+        UUID targetEntityId = null;
+
+        if (entityHitResult != null) {
+            Entity hitEntity = entityHitResult.getEntity();
+            if (hitEntity instanceof PartEntity<?> partEntity) {
+                hitEntity = partEntity.getParent();
+            }
+            targetPos = entityHitResult.getLocation();
+            targetType = CreatePocketMarkerC2SPacket.TARGET_ENTITY;
+            entityName = hitEntity.getDisplayName().getString();
+            targetEntityId = hitEntity.getUUID();
+        } else {
+            BlockHitResult blockHitResult = (BlockHitResult) player.pick(300.0, 0.0f, false);
+            if (blockHitResult.getType() == HitResult.Type.BLOCK) {
+                targetPos = blockHitResult.getLocation();
+                targetType = CreatePocketMarkerC2SPacket.TARGET_BLOCK;
+            } else {
+                targetPos = endPos;
+                targetType = CreatePocketMarkerC2SPacket.TARGET_MISS;
+            }
+        }
+
+        NetworkHandler.CHANNEL.send(
+                PacketDistributor.SERVER.noArg(),
+                new CreatePocketMarkerC2SPacket(targetPos, targetType, entityName, targetEntityId, selectedIcon)
+        );
     }
 
     private static int getPlayerColor(Player player) {
