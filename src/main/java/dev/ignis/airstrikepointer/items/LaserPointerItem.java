@@ -2,6 +2,7 @@ package dev.ignis.airstrikepointer.items;
 
 import dev.ignis.airstrikepointer.Config;
 import dev.ignis.airstrikepointer.markers.MarkerStorage;
+import dev.ignis.airstrikepointer.markers.PointMarkerIcon;
 import dev.ignis.airstrikepointer.network.*;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
@@ -192,7 +193,8 @@ public class LaserPointerItem extends Item {
         String itemName = stack.hasCustomHoverName() ? stack.getDisplayName().getString() : null;
 
         if (mode == Mode.POINT) {
-            var marker = storage.createPointMarker(player.getUUID(), targetPos, color, teamName, targetType, entityName, targetEntityId, player.getDisplayName().getString(), itemName, null, null);
+            String iconId = PointMarkerIcon.getDefaultIconId(targetType == CreatePointMarkerPacket.TARGET_ENTITY);
+            var marker = storage.createPointMarker(player.getUUID(), targetPos, color, teamName, targetType, entityName, targetEntityId, player.getDisplayName().getString(), itemName, null, null, iconId);
             if (marker != null) {
                 player.displayClientMessage(Component.translatable("message.airstrikepointers.point_marked").withStyle(ChatFormatting.GREEN), true);
             } else {

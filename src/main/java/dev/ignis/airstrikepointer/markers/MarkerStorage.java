@@ -79,14 +79,14 @@ public class MarkerStorage extends SavedData {
         return storage;
     }
 
-    public PointMarker createPointMarker(UUID ownerId, Vec3 position, int color, String teamName, int targetType, String entityName, UUID targetEntityId, String playerName, String itemName, String customTitle, String customDescription) {
+    public PointMarker createPointMarker(UUID ownerId, Vec3 position, int color, String teamName, int targetType, String entityName, UUID targetEntityId, String playerName, String itemName, String customTitle, String customDescription, String iconId) {
         if (!ownerId.equals(COMMAND_OWNER_ID) && getPlayerMarkerCount(ownerId) >= Config.MAX_MARKERS_PER_PLAYER.get()) {
             return null;
         }
 
         UUID markerId = UUID.randomUUID();
         int lifetimeTicks = Config.MARKER_LIFETIME_SECONDS.get() * 20;
-        PointMarker marker = new PointMarker(markerId, ownerId, position, color, teamName, lifetimeTicks, targetEntityId, itemName, entityName, customTitle, customDescription);
+        PointMarker marker = new PointMarker(markerId, ownerId, position, color, teamName, lifetimeTicks, targetEntityId, iconId, itemName, entityName, customTitle, customDescription);
         pointMarkers.put(markerId, marker);
         if (!ownerId.equals(COMMAND_OWNER_ID)) {
             incrementPlayerCount(ownerId);
@@ -102,7 +102,7 @@ public class MarkerStorage extends SavedData {
             }
         }
 
-        broadcastToAll(new CreatePointMarkerPacket(markerId, ownerId, position, color, teamName, lifetimeTicks, targetType, entityName, targetEntityId, itemName, customTitle, customDescription));
+        broadcastToAll(new CreatePointMarkerPacket(markerId, ownerId, position, color, teamName, lifetimeTicks, targetType, entityName, targetEntityId, itemName, customTitle, customDescription, marker.getIconId()));
         String displayName = customTitle != null ? customTitle : playerName;
         broadcastMarkerNotification(marker, displayName, targetType, entityName);
         return marker;
@@ -273,7 +273,7 @@ public class MarkerStorage extends SavedData {
             pointData.add(new SyncMarkersPacket.PointMarkerData(
                     marker.getMarkerId(), marker.getOwnerId(), marker.getPosition(),
                     marker.getColor(), marker.getTeamName(), marker.getRemainingTicks(),
-                    marker.getTargetEntityId(), marker.getItemName(),
+                    marker.getTargetEntityId(), marker.getIconId(), marker.getItemName(),
                     marker.getEntityName(), marker.isEntityLost(),
                     marker.getCustomTitle(), marker.getCustomDescription()
             ));

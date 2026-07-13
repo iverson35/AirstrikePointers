@@ -18,6 +18,7 @@ public record SyncMarkersPacket(
             UUID markerId, UUID ownerId, Vec3 position,
             int color, String teamName, int remainingTicks,
             UUID targetEntityId,
+            String iconId,
             String itemName,
             String entityName,
             boolean entityLost,
@@ -51,6 +52,7 @@ public record SyncMarkersPacket(
             buf.writeBoolean(data.entityLost);
             buf.writeUtf(data.customTitle != null ? data.customTitle : "");
             buf.writeUtf(data.customDescription != null ? data.customDescription : "");
+            buf.writeUtf(data.iconId != null ? data.iconId : "");
         }
 
         buf.writeInt(pathMarkers.size());
@@ -94,7 +96,9 @@ public record SyncMarkersPacket(
             if (customTitle.isEmpty()) customTitle = null;
             String customDescription = buf.readUtf();
             if (customDescription.isEmpty()) customDescription = null;
-            points.add(new PointMarkerData(markerId, ownerId, position, color, teamName, remainingTicks, targetEntityId, itemName, entityName, entityLost, customTitle, customDescription));
+            String iconId = buf.readUtf();
+            if (iconId.isEmpty()) iconId = null;
+            points.add(new PointMarkerData(markerId, ownerId, position, color, teamName, remainingTicks, targetEntityId, iconId, itemName, entityName, entityLost, customTitle, customDescription));
         }
 
         int pathCount = buf.readInt();
@@ -131,7 +135,7 @@ public record SyncMarkersPacket(
                         data.markerId, data.ownerId, data.position,
                         data.color, data.teamName, data.remainingTicks,
                         targetType, data.entityName != null ? data.entityName : "", data.targetEntityId, data.itemName,
-                        data.customTitle, data.customDescription
+                        data.customTitle, data.customDescription, data.iconId
                 ));
                 if (data.entityLost) {
                     MarkerRenderer.updateEntityLost(new UpdateEntityLostPacket(data.markerId, true));

@@ -4,6 +4,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import dev.ignis.airstrikepointer.markers.MarkerStorage;
+import dev.ignis.airstrikepointer.markers.PointMarkerIcon;
 import dev.ignis.airstrikepointer.network.CreatePointMarkerPacket;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
@@ -77,7 +78,8 @@ public class MarkerCommands {
         Vec3 position = new Vec3(x, y, z);
         var marker = storage.createPointMarker(MarkerStorage.COMMAND_OWNER_ID, position, color, "",
                 CreatePointMarkerPacket.TARGET_BLOCK, "", null,
-                title, description, title, description);
+                title, description, title, description,
+                PointMarkerIcon.POINT_BLOCK_ID);
 
         if (marker != null) {
             source.sendSuccess(() -> Component.translatable("message.airstrikepointers.command_marker_created",

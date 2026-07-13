@@ -4,6 +4,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.*;
 import dev.ignis.airstrikepointer.AirstrikePointers;
 import dev.ignis.airstrikepointer.Config;
+import dev.ignis.airstrikepointer.markers.PointMarkerIcon;
 import dev.ignis.airstrikepointer.network.CreatePathMarkerPacket;
 import dev.ignis.airstrikepointer.network.CreatePointMarkerPacket;
 import dev.ignis.airstrikepointer.network.UpdateEntityLostPacket;
@@ -36,20 +37,15 @@ import java.util.*;
 public class MarkerRenderer {
     private static final Logger LOGGER = LoggerFactory.getLogger(MarkerRenderer.class);
     @SuppressWarnings("removal")
-    private static final ResourceLocation POINT_TEXTURE = new ResourceLocation(AirstrikePointers.MODID, "textures/marker/point.png");
-    @SuppressWarnings("removal")
-    private static final ResourceLocation BLOCK_POINT_TEXTURE = new ResourceLocation(AirstrikePointers.MODID, "textures/marker/point_block.png");
-    @SuppressWarnings("removal")
     private static final ResourceLocation PATH_TEXTURE = new ResourceLocation(AirstrikePointers.MODID, "textures/marker/path.png");
     @SuppressWarnings("removal")
     private static final ResourceLocation PATH_START_TEXTURE = new ResourceLocation(AirstrikePointers.MODID, "textures/marker/path_start.png");
 
-    // 自定义RenderType：无深度测试（穿墙显示）
-    private static final RenderType MARKER_RENDER_TYPE = createMarkerRenderType(POINT_TEXTURE);
-    private static final RenderType PATH_RENDER_TYPE = createMarkerRenderType(PATH_TEXTURE);
-    private static final RenderType PATH_START_RENDER_TYPE = createMarkerRenderType(PATH_START_TEXTURE);
+    // 路径标记世界空间渲染类型
+    private static final RenderType PATH_RENDER_TYPE = createPathRenderType(PATH_TEXTURE);
+    private static final RenderType PATH_START_RENDER_TYPE = createPathRenderType(PATH_START_TEXTURE);
 
-    private static RenderType createMarkerRenderType(ResourceLocation texture) {
+    private static RenderType createPathRenderType(ResourceLocation texture) {
         return RenderType.create(
                 "airstrike_marker",
                 DefaultVertexFormat.NEW_ENTITY,
@@ -273,8 +269,8 @@ public class MarkerRenderer {
             int x = (int) marker.screenX;
             int y = (int) marker.screenY;
 
-            // 绘制纹理（实体标记与方块标记使用不同纹理）
-            ResourceLocation texture = marker.targetEntityId != null ? POINT_TEXTURE : BLOCK_POINT_TEXTURE;
+            // 绘制纹理（根据图标 ID 选择纹理）
+            ResourceLocation texture = PointMarkerIcon.getTexture(marker.iconId);
             float alpha = 0.8f;
             // 剩余时间小于 1/4 时每秒闪烁 2 次（周期 10 ticks）
             if (marker.remainingTicks < marker.lifetimeTicks / 4) {
@@ -480,62 +476,6 @@ public class MarkerRenderer {
         }
     }
 
-    private static void renderPointMarker(PoseStack poseStack, MultiBufferSource bufferSource, ClientPointMarker marker) {
-        Minecraft mc = Minecraft.getInstance();
-        Vec3 cameraPos = mc.gameRenderer.getMainCamera().getPosition();
-        double distance = marker.position.distanceTo(cameraPos);
-
-        // 距离自适应大小：越远越大，但有最小�?
-        float scale = calculateConstantScreenSizeScale(distance);
-
-        float x = (float) marker.position.x;
-        float y = (float) (marker.position.y + 0.5);
-        float z = (float) marker.position.z;
-
-        float r = ((marker.color >> 16) & 0xFF) / 255f;
-        float g = ((marker.color >> 8) & 0xFF) / 255f;
-        float b = (marker.color & 0xFF) / 255f;
-
-        poseStack.pushPose();
-        poseStack.translate(x, y, z);
-
-        // Billboard：使面片朝向相机
-        poseStack.mulPose(mc.getEntityRenderDispatcher().cameraOrientation());
-        poseStack.scale(scale, scale, scale);
-
-        VertexConsumer vertexConsumer = bufferSource.getBuffer(MARKER_RENDER_TYPE);
-        PoseStack.Pose pose = poseStack.last();
-
-        // 绘制面片
-        float alpha = 0.8f;
-        vertex(vertexConsumer, pose, -1, -1, 0, 0, 1, r, g, b, alpha);
-        vertex(vertexConsumer, pose, 1, -1, 0, 1, 1, r, g, b, alpha);
-        vertex(vertexConsumer, pose, 1, 1, 0, 1, 0, r, g, b, alpha);
-        vertex(vertexConsumer, pose, -1, 1, 0, 0, 0, r, g, b, alpha);
-
-        poseStack.popPose();
-    }
-
-    /**
-     * 计算屏幕空间恒定大小的缩放值
-     *
-     * @param distance 到相机的距离
-     * @return 缩放值
-     */
-    private static float calculateConstantScreenSizeScale(double distance) {
-        return (float) 1.5 * (float) (distance / (float) 32.0);
-    }
-
-    private static void vertex(VertexConsumer consumer, PoseStack.Pose pose, float x, float y, float z, float u, float v, float r, float g, float b, float a) {
-        consumer.vertex(pose.pose(), x, y, z)
-                .color(r, g, b, a)
-                .uv(u, v)
-                .overlayCoords(net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY)
-                .uv2(net.minecraft.client.renderer.LightTexture.FULL_BRIGHT)
-                .normal(pose.normal(), 0, 1, 0)
-                .endVertex();
-    }
-
     private static void renderPathMarker(PoseStack poseStack, MultiBufferSource bufferSource, ClientPathMarker marker) {
         Minecraft mc = Minecraft.getInstance();
         Vec3 cameraPos = mc.gameRenderer.getMainCamera().getPosition();
@@ -642,6 +582,23 @@ public class MarkerRenderer {
         poseStack.popPose();
     }
 
+    /**
+     * 计算屏幕空间恒定大小的缩放值
+     */
+    private static float calculateConstantScreenSizeScale(double distance) {
+        return (float) 1.5 * (float) (distance / (float) 32.0);
+    }
+
+    private static void vertex(VertexConsumer consumer, PoseStack.Pose pose, float x, float y, float z, float u, float v, float r, float g, float b, float a) {
+        consumer.vertex(pose.pose(), x, y, z)
+                .color(r, g, b, a)
+                .uv(u, v)
+                .overlayCoords(net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY)
+                .uv2(net.minecraft.client.renderer.LightTexture.FULL_BRIGHT)
+                .normal(pose.normal(), 0, 1, 0)
+                .endVertex();
+    }
+
     private static class ClientPointMarker {
         final UUID markerId;
         final UUID ownerId;
@@ -661,10 +618,11 @@ public class MarkerRenderer {
 
         boolean entityLost;
         final String entityName;
+        final String iconId;
         final String itemName;
         final String customTitle;
         final String customDescription;
-
+        
         ClientPointMarker(CreatePointMarkerPacket packet) {
             this.markerId = packet.markerId();
             this.ownerId = packet.ownerId();
@@ -673,11 +631,12 @@ public class MarkerRenderer {
             this.color = packet.color();
             this.teamName = packet.teamName();
             this.remainingTicks = packet.lifetimeTicks();
-            this.   lifetimeTicks = packet.lifetimeTicks();
+            this.lifetimeTicks = packet.lifetimeTicks();
             this.age = 0;
             this.targetEntityId = packet.targetEntityId();
             this.entityLost = false;
             this.entityName = packet.entityName();
+            this.iconId = packet.iconId();
             this.itemName = packet.itemName();
             this.customTitle = packet.customTitle();
             this.customDescription = packet.customDescription();
