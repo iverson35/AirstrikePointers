@@ -57,6 +57,11 @@ public class MarkerWheelOverlay {
     private static int selectedIndex = -1; // -1 = center dot, 0-7 = outer icons
     private static int holdTicks = 0;
 
+    // 轮盘激活时的鼠标原点（用于增量选择，而非绝对坐标）
+    private static double wheelOriginX = 0;
+    private static double wheelOriginY = 0;
+    private static boolean originCaptured = false;
+
     // 右键按下时捕获的目标（解决选图标和瞄准的矛盾）
     private static Vec3 capturedTargetPos = null;
     private static int capturedTargetType = 0; // 0=miss, 1=block, 2=entity
@@ -91,32 +96,36 @@ public class MarkerWheelOverlay {
         holdTicks = useDuration - timeLeft;
 
         if (holdTicks >= WHEEL_THRESHOLD_TICKS) {
+            if (!wheelActive) {
+                // 轮盘刚激活：捕获当前鼠标位置作为原点
+                wheelOriginX = mc.mouseHandler.xpos();
+                wheelOriginY = mc.mouseHandler.ypos();
+                originCaptured = true;
+            }
             wheelActive = true;
-            // 根据鼠标位置更新选中项
+            // 根据鼠标相对于原点的偏移量更新选中项
             updateSelection(mc);
         } else {
             wheelActive = false;
             selectedIndex = -1;
+            originCaptured = false;
         }
     }
 
     /**
-     * 根据鼠标位置更新选中的图标。
+     * 根据鼠标相对于轮盘激活原点的偏移量更新选中的图标。
+     * 使用增量而非绝对坐标，确保轮盘打开时默认选中中央 dot。
      */
     private static void updateSelection(Minecraft mc) {
-        if (mc.getWindow() == null) return;
-
-        int screenWidth = mc.getWindow().getGuiScaledWidth();
-        int screenHeight = mc.getWindow().getGuiScaledHeight();
-        int centerX = screenWidth / 2;
-        int centerY = screenHeight / 2;
+        if (mc.getWindow() == null || !originCaptured) return;
 
         // xpos/ypos 已经是 GUI 坐标，无需额外缩放
         double mouseX = mc.mouseHandler.xpos();
         double mouseY = mc.mouseHandler.ypos();
 
-        double dx = mouseX - centerX;
-        double dy = mouseY - centerY;
+        // 使用鼠标相对于激活原点的偏移量
+        double dx = mouseX - wheelOriginX;
+        double dy = mouseY - wheelOriginY;
         double dist = Math.sqrt(dx * dx + dy * dy);
 
         // 中心死区：选中 dot
@@ -304,5 +313,6 @@ public class MarkerWheelOverlay {
         wheelActive = false;
         selectedIndex = -1;
         holdTicks = 0;
+        originCaptured = false;
     }
 }
