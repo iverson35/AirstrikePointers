@@ -6,7 +6,6 @@ import dev.ignis.airstrikepointer.network.*;
 import dev.ignis.airstrikepointer.network.RemoveMarkerPacket;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
