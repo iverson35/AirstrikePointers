@@ -1,5 +1,6 @@
 package dev.ignis.airstrikepointer.items;
 
+import dev.ignis.airstrikepointer.Config;
 import dev.ignis.airstrikepointer.client.MarkerWheelOverlay;
 import dev.ignis.airstrikepointer.markers.MarkerStorage;
 import dev.ignis.airstrikepointer.markers.PointMarkerIcon;
@@ -109,7 +110,7 @@ public class PocketLaserPointerItem extends Item {
 
         if (level.isClientSide) {
             // 客户端：长按轮盘逻辑
-            if (useTicks >= MarkerWheelOverlay.WHEEL_THRESHOLD_TICKS && MarkerWheelOverlay.isWheelActive()) {
+            if (useTicks >= Config.WHEEL_HOLD_THRESHOLD_TICKS.get() && MarkerWheelOverlay.isWheelActive()) {
                 sendWheelMarker(player);
             }
             MarkerWheelOverlay.reset();

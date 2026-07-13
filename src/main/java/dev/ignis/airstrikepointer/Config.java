@@ -72,6 +72,10 @@ public class Config {
             .comment("Maximum distance to render markers (blocks). 0 = unlimited")
             .defineInRange("maxRenderDistance", 0, 0, 10000);
 
+    public static final ForgeConfigSpec.IntValue WHEEL_HOLD_THRESHOLD_TICKS = CLIENT_BUILDER
+            .comment("How many ticks to hold right-click before the marker wheel appears (20 ticks = 1 second)")
+            .defineInRange("wheelHoldThresholdTicks", 3, 1, 40);
+
     static final ForgeConfigSpec CLIENT_SPEC = CLIENT_BUILDER.build();
 
     // 配置重载回调

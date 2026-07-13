@@ -2,6 +2,7 @@ package dev.ignis.airstrikepointer.client;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import dev.ignis.airstrikepointer.AirstrikePointers;
+import dev.ignis.airstrikepointer.Config;
 import dev.ignis.airstrikepointer.items.ModItems;
 import dev.ignis.airstrikepointer.markers.PointMarkerIcon;
 import net.minecraft.client.Minecraft;
@@ -51,8 +52,10 @@ public class MarkerWheelOverlay {
     private static final ResourceLocation CURSOR_TEXTURE = new ResourceLocation(AirstrikePointers.MODID, "textures/gui/wheel_cursor.png");
     private static final int CURSOR_SIZE = 16;
 
-    // 轮盘显示阈值（ticks），约 0.15 秒
-    public static final int WHEEL_THRESHOLD_TICKS = 3;
+    // 轮盘显示阈值（ticks），从客户端配置读取，默认 3 ticks
+    private static int getWheelThresholdTicks() {
+        return Config.WHEEL_HOLD_THRESHOLD_TICKS.get();
+    }
 
     // 状态
     private static boolean wheelActive = false;
@@ -97,7 +100,7 @@ public class MarkerWheelOverlay {
         int timeLeft = mc.player.getUseItemRemainingTicks();
         holdTicks = useDuration - timeLeft;
 
-        if (holdTicks >= WHEEL_THRESHOLD_TICKS) {
+        if (holdTicks >= getWheelThresholdTicks()) {
             if (!wheelActive) {
                 // 轮盘刚激活：捕获当前鼠标位置作为原点
                 wheelOriginX = mc.mouseHandler.xpos();
