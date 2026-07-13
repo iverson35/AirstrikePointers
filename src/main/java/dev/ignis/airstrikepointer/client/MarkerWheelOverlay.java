@@ -44,10 +44,12 @@ public class MarkerWheelOverlay {
 
     private static final int ICON_COUNT = WHEEL_ICONS.length; // 8
     private static final float WHEEL_RADIUS = 70.0f;  // 圆周半径
-    private static final float CENTER_DEAD_ZONE = 22.0f; // 中心死区半径（在此范围内选中 dot）
+    private static final float CENTER_DEAD_ZONE = 8.0f; // 中心死区半径（在此范围内选中 dot）
     private static final int ICON_SIZE = 20; // 渲染图标大小
     private static final int ICON_SIZE_SELECTED = 26; // 选中图标放大
     private static final float ANGLE_PER_ICON = 360.0f / ICON_COUNT; // 45°
+    private static final ResourceLocation CURSOR_TEXTURE = new ResourceLocation(AirstrikePointers.MODID, "textures/gui/wheel_cursor.png");
+    private static final int CURSOR_SIZE = 16;
 
     // 轮盘显示阈值（ticks），约 0.15 秒
     public static final int WHEEL_THRESHOLD_TICKS = 3;
@@ -166,6 +168,21 @@ public class MarkerWheelOverlay {
 
         var pose = gui.pose();
         pose.pushPose();
+
+        // 绘制鼠标判定位置指示点（相对偏移量映射到屏幕中心）
+        if (originCaptured) {
+            double dx = mc.mouseHandler.xpos() - wheelOriginX;
+            double dy = mc.mouseHandler.ypos() - wheelOriginY;
+            double dist = Math.sqrt(dx * dx + dy * dy);
+            float maxDist = WHEEL_RADIUS + 14.0f;
+            if (dist > maxDist) {
+                dx = dx / dist * maxDist;
+                dy = dy / dist * maxDist;
+            }
+            int dotX = centerX + (int) dx;
+            int dotY = centerY + (int) dy;
+            renderIcon(gui, CURSOR_TEXTURE, dotX - CURSOR_SIZE / 2, dotY - CURSOR_SIZE / 2, CURSOR_SIZE, 0.7f);
+        }
 
         // 绘制 8 个外围图标
         for (int i = 0; i < ICON_COUNT; i++) {
