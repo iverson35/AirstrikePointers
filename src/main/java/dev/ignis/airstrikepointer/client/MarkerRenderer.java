@@ -262,6 +262,13 @@ public class MarkerRenderer {
                 continue;
             }
 
+            boolean isDistant = marker.distanceToPlayer > 1000.0;
+
+            // 超过 1000 米的袖珍指示器标记（不制导）直接不渲染
+            if (isDistant && marker.guidanceDisabled) {
+                continue;
+            }
+
             float r = ((marker.color >> 16) & 0xFF) / 255f;
             float g = ((marker.color >> 8) & 0xFF) / 255f;
             float b = (marker.color & 0xFF) / 255f;
@@ -278,9 +285,20 @@ public class MarkerRenderer {
             }
             RenderSystem.setShaderColor(r, g, b, alpha);
             RenderSystem.enableBlend();
-            gui.blit(texture, x - 8, y - 8, 16, 16, 0f, 0f, 32, 32, 32, 32);
+            
+            if (isDistant) {
+                // 超过 1000 米：缩小为一半（8x8），不显示额外文本
+                gui.blit(texture, x - 4, y - 4, 8, 8, 0f, 0f, 32, 32, 32, 32);
+            } else {
+                gui.blit(texture, x - 8, y - 8, 16, 16, 0f, 0f, 32, 32, 32, 32);
+            }
             RenderSystem.disableBlend();
             RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
+
+            // 超过 1000 米不显示任何额外文本
+            if (isDistant) {
+                continue;
+            }
 
             Minecraft mc = Minecraft.getInstance();
             var font = mc.font;
@@ -470,8 +488,9 @@ public class MarkerRenderer {
         marker.screenX = window.getGuiScaledWidth() * (0.5f + pos.x * 0.5f);
         marker.screenY = window.getGuiScaledHeight() * (0.5f - pos.y * 0.5f);
         marker.screenVisible = depth > 0;
+        double dist = worldPos.distanceTo(camera.getPosition());
+        marker.distanceToPlayer = dist;
         if (marker.screenVisible && Config.MAX_RENDER_DISTANCE.get() > 0) {
-            double dist = worldPos.distanceTo(camera.getPosition());
             marker.screenVisible = dist <= Config.MAX_RENDER_DISTANCE.get();
         }
     }
@@ -622,6 +641,8 @@ public class MarkerRenderer {
         final String itemName;
         final String customTitle;
         final String customDescription;
+        final boolean guidanceDisabled;
+        double distanceToPlayer;
         
         ClientPointMarker(CreatePointMarkerPacket packet) {
             this.markerId = packet.markerId();
@@ -640,6 +661,8 @@ public class MarkerRenderer {
             this.itemName = packet.itemName();
             this.customTitle = packet.customTitle();
             this.customDescription = packet.customDescription();
+            this.guidanceDisabled = packet.guidanceDisabled();
+            this.distanceToPlayer = 0;
         }
 
         void tick() {

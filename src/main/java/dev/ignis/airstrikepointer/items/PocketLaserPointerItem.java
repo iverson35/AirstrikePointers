@@ -72,6 +72,7 @@ public class PocketLaserPointerItem extends Item {
         tooltipComponents.add(Component.translatable("tooltip.airstrikepointers.pocket_short_press").withStyle(ChatFormatting.GREEN));
         tooltipComponents.add(Component.translatable("tooltip.airstrikepointers.pocket_long_press").withStyle(ChatFormatting.GRAY));
         tooltipComponents.add(Component.translatable("tooltip.airstrikepointers.clear_markers").withStyle(ChatFormatting.GRAY));
+        tooltipComponents.add(Component.translatable("tooltip.airstrikepointers.no_guidance").withStyle(ChatFormatting.DARK_GRAY));
         super.appendHoverText(stack, level, tooltipComponents, isAdvanced);
     }
 

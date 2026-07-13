@@ -12,6 +12,7 @@
   "tooltip.airstrikepointers.pocket_long_press": "Hold Right Click: open marker wheel to select icon",
   "tooltip.airstrikepointers.clear_markers": "Sneak+Left Click to clear all markers",
   "tooltip.airstrikepointers.cancel_mark": "Sneak+Release to cancel action",
+  "tooltip.airstrikepointers.no_guidance": "Markers from this item cannot be guided",
   "message.airstrikepointers.mode_switched": "Mode switched to: %s",
   "message.airstrikepointers.point_marked": "Point marked",
   "message.airstrikepointers.path_created": "Path created",
