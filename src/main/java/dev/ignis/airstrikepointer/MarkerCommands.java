@@ -3,12 +3,14 @@ package dev.ignis.airstrikepointer;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.suggestion.SuggestionProvider;
 import dev.ignis.airstrikepointer.markers.MarkerStorage;
 import dev.ignis.airstrikepointer.markers.PointMarkerIcon;
 import dev.ignis.airstrikepointer.network.CreatePointMarkerPacket;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
@@ -26,6 +28,9 @@ public class MarkerCommands {
             0x5555FF, 0xFF55FF, 0xFF8800, 0x00FF88, 0xFF0088,
             0x88FF00, 0x0088FF
     };
+
+    private static final SuggestionProvider<CommandSourceStack> ICON_SUGGESTIONS =
+            (context, builder) -> SharedSuggestionProvider.suggest(PointMarkerIcon.getIconIds(), builder);
 
     @SubscribeEvent
     public static void onRegisterCommands(RegisterCommandsEvent event) {
@@ -47,8 +52,22 @@ public class MarkerCommands {
                                             DoubleArgumentType.getDouble(context, "x"),
                                             DoubleArgumentType.getDouble(context, "y"),
                                             DoubleArgumentType.getDouble(context, "z"),
+                                            null,
                                             null
                                         ))
+                                        .then(Commands.argument("icon", StringArgumentType.word())
+                                            .suggests(ICON_SUGGESTIONS)
+                                            .executes(context -> executeCreate(
+                                                context.getSource(),
+                                                StringArgumentType.getString(context, "title"),
+                                                StringArgumentType.getString(context, "description"),
+                                                DoubleArgumentType.getDouble(context, "x"),
+                                                DoubleArgumentType.getDouble(context, "y"),
+                                                DoubleArgumentType.getDouble(context, "z"),
+                                                null,
+                                                StringArgumentType.getString(context, "icon")
+                                            ))
+                                        )
                                         .then(Commands.argument("color", StringArgumentType.string())
                                             .executes(context -> executeCreate(
                                                 context.getSource(),
@@ -57,8 +76,22 @@ public class MarkerCommands {
                                                 DoubleArgumentType.getDouble(context, "x"),
                                                 DoubleArgumentType.getDouble(context, "y"),
                                                 DoubleArgumentType.getDouble(context, "z"),
-                                                StringArgumentType.getString(context, "color")
+                                                StringArgumentType.getString(context, "color"),
+                                                null
                                             ))
+                                            .then(Commands.argument("icon", StringArgumentType.word())
+                                                .suggests(ICON_SUGGESTIONS)
+                                                .executes(context -> executeCreate(
+                                                    context.getSource(),
+                                                    StringArgumentType.getString(context, "title"),
+                                                    StringArgumentType.getString(context, "description"),
+                                                    DoubleArgumentType.getDouble(context, "x"),
+                                                    DoubleArgumentType.getDouble(context, "y"),
+                                                    DoubleArgumentType.getDouble(context, "z"),
+                                                    StringArgumentType.getString(context, "color"),
+                                                    StringArgumentType.getString(context, "icon")
+                                                ))
+                                            )
                                         )
                                     )
                                 )
@@ -69,17 +102,22 @@ public class MarkerCommands {
         );
     }
 
-    private static int executeCreate(CommandSourceStack source, String title, String description, double x, double y, double z, String colorStr) {
+    private static int executeCreate(CommandSourceStack source, String title, String description, double x, double y, double z, String colorStr, String iconId) {
         ServerLevel level = source.getLevel();
         MarkerStorage storage = MarkerStorage.get(level);
 
         int color = parseColor(colorStr, source);
 
+        // 验证图标 ID，无效或未提供则默认使用 point_block
+        if (iconId == null || !PointMarkerIcon.isValid(iconId)) {
+            iconId = PointMarkerIcon.POINT_BLOCK_ID;
+        }
+
         Vec3 position = new Vec3(x, y, z);
         var marker = storage.createPointMarker(MarkerStorage.COMMAND_OWNER_ID, position, color, "",
                 CreatePointMarkerPacket.TARGET_BLOCK, "", null,
                 title, description, title, description,
-                PointMarkerIcon.POINT_BLOCK_ID);
+                iconId);
 
         if (marker != null) {
             source.sendSuccess(() -> Component.translatable("message.airstrikepointers.command_marker_created",
