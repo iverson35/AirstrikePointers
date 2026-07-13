@@ -6,12 +6,21 @@ import dev.ignis.airstrikepointer.items.ModItems;
 import dev.ignis.airstrikepointer.markers.PointMarkerIcon;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
+import net.minecraftforge.entity.PartEntity;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+
+import java.util.UUID;
 
 /**
  * 袖珍激光笔长按右键时显示的标记轮盘。
@@ -40,13 +49,19 @@ public class MarkerWheelOverlay {
     private static final int ICON_SIZE_SELECTED = 26; // 选中图标放大
     private static final float ANGLE_PER_ICON = 360.0f / ICON_COUNT; // 45°
 
-    // 轮盘显示阈值（ticks），约 0.5 秒
-    public static final int WHEEL_THRESHOLD_TICKS = 10;
+    // 轮盘显示阈值（ticks），约 0.15 秒
+    public static final int WHEEL_THRESHOLD_TICKS = 3;
 
     // 状态
     private static boolean wheelActive = false;
     private static int selectedIndex = -1; // -1 = center dot, 0-7 = outer icons
     private static int holdTicks = 0;
+
+    // 右键按下时捕获的目标（解决选图标和瞄准的矛盾）
+    private static Vec3 capturedTargetPos = null;
+    private static int capturedTargetType = 0; // 0=miss, 1=block, 2=entity
+    private static String capturedEntityName = "";
+    private static UUID capturedEntityId = null;
 
     /**
      * 每 tick 更新轮盘状态。
@@ -96,15 +111,12 @@ public class MarkerWheelOverlay {
         int centerX = screenWidth / 2;
         int centerY = screenHeight / 2;
 
+        // xpos/ypos 已经是 GUI 坐标，无需额外缩放
         double mouseX = mc.mouseHandler.xpos();
         double mouseY = mc.mouseHandler.ypos();
 
-        // 转换到 GUI 坐标
-        double guiMouseX = mouseX * (double) screenWidth / (double) mc.getWindow().getScreenWidth();
-        double guiMouseY = mouseY * (double) screenHeight / (double) mc.getWindow().getScreenHeight();
-
-        double dx = guiMouseX - centerX;
-        double dy = guiMouseY - centerY;
+        double dx = mouseX - centerX;
+        double dy = mouseY - centerY;
         double dist = Math.sqrt(dx * dx + dy * dy);
 
         // 中心死区：选中 dot
@@ -146,32 +158,6 @@ public class MarkerWheelOverlay {
         var pose = gui.pose();
         pose.pushPose();
 
-        // 绘制半透明背景圆盘
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 0.15f);
-        gui.fill((int) (centerX - WHEEL_RADIUS - 30), (int) (centerY - WHEEL_RADIUS - 30),
-                (int) (centerX + WHEEL_RADIUS + 30), (int) (centerY + WHEEL_RADIUS + 30),
-                0x20FFFFFF);
-        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
-
-        // 绘制连接线（从中心到各图标）
-        for (int i = 0; i < ICON_COUNT; i++) {
-            if (i == selectedIndex) continue; // 选中的稍后画
-            float angle = (float) Math.toRadians(i * ANGLE_PER_ICON - 90);
-            int ix = centerX + (int) (Math.cos(angle) * WHEEL_RADIUS);
-            int iy = centerY + (int) (Math.sin(angle) * WHEEL_RADIUS);
-            drawLine(gui, centerX, centerY, ix, iy, 0x30FFFFFF);
-        }
-
-        // 绘制选中图标的连接线（高亮）
-        if (selectedIndex >= 0) {
-            float angle = (float) Math.toRadians(selectedIndex * ANGLE_PER_ICON - 90);
-            int ix = centerX + (int) (Math.cos(angle) * WHEEL_RADIUS);
-            int iy = centerY + (int) (Math.sin(angle) * WHEEL_RADIUS);
-            drawLine(gui, centerX, centerY, ix, iy, 0x80FFFFFF);
-        }
-
         // 绘制 8 个外围图标
         for (int i = 0; i < ICON_COUNT; i++) {
             boolean isSelected = (i == selectedIndex);
@@ -211,30 +197,13 @@ public class MarkerWheelOverlay {
         }
 
         // 绘制选中的图标名称标签
-        String labelText = getSelectedLabel();
-        if (!labelText.isEmpty()) {
+        Component labelText = getSelectedLabel();
+        if (!labelText.getString().isEmpty()) {
             int labelWidth = mc.font.width(labelText);
             gui.drawCenteredString(mc.font, labelText, centerX, centerY + dotSize / 2 + 14, 0xFFFFFF);
         }
 
         pose.popPose();
-    }
-
-    /**
-     * 绘制一条细线。
-     */
-    private static void drawLine(GuiGraphics gui, int x1, int y1, int x2, int y2, int color) {
-        // 使用 fill 近似绘制（水平/垂直），或用多个小矩形近似斜线
-        int dx = Math.abs(x2 - x1);
-        int dy = Math.abs(y2 - y1);
-        int steps = Math.max(dx, dy);
-        if (steps == 0) return;
-
-        for (int i = 0; i <= steps; i++) {
-            int x = x1 + (x2 - x1) * i / steps;
-            int y = y1 + (y2 - y1) * i / steps;
-            gui.fill(x, y, x + 2, y + 2, color);
-        }
     }
 
     /**
@@ -250,19 +219,69 @@ public class MarkerWheelOverlay {
     }
 
     /**
+     * 右键按下时捕获目标。在 use() 中由 PocketLaserPointerItem 调用。
+     * 这样玩家可以在之后移动视角选择图标，而不丢失瞄准的目标。
+     */
+    public static void captureTarget(Player player) {
+        capturedTargetPos = null;
+        capturedTargetType = 0;
+        capturedEntityName = "";
+        capturedEntityId = null;
+
+        var level = player.level();
+        Vec3 eyePos = player.getEyePosition(0.0f);
+        Vec3 lookVec = player.getViewVector(0.0f);
+        Vec3 endPos = eyePos.add(lookVec.x * 300.0, lookVec.y * 300.0, lookVec.z * 300.0);
+
+        var entityHit = net.minecraft.world.entity.projectile.ProjectileUtil.getEntityHitResult(
+                level, player, eyePos, endPos,
+                player.getBoundingBox().expandTowards(lookVec.scale(300.0)).inflate(1.0),
+                entity -> !entity.isSpectator() && entity.isPickable()
+        );
+
+        if (entityHit != null) {
+            Entity hitEntity = entityHit.getEntity();
+            if (hitEntity instanceof PartEntity<?> partEntity) {
+                hitEntity = partEntity.getParent();
+            }
+            capturedTargetPos = entityHit.getLocation();
+            capturedTargetType = 2; // entity
+            capturedEntityName = hitEntity.getDisplayName().getString();
+            capturedEntityId = hitEntity.getUUID();
+        } else {
+            BlockHitResult blockHit = (BlockHitResult) player.pick(300.0, 0.0f, false);
+            if (blockHit.getType() == HitResult.Type.BLOCK) {
+                capturedTargetPos = blockHit.getLocation();
+                capturedTargetType = 1; // block
+            } else {
+                capturedTargetPos = endPos;
+                capturedTargetType = 0; // miss
+            }
+        }
+    }
+
+    /** 获取捕获的目标位置 */
+    public static Vec3 getCapturedPos() { return capturedTargetPos; }
+    /** 获取捕获的目标类型 */
+    public static int getCapturedType() { return capturedTargetType; }
+    /** 获取捕获的实体名 */
+    public static String getCapturedEntityName() { return capturedEntityName; }
+    /** 获取捕获的实体 UUID */
+    public static UUID getCapturedEntityId() { return capturedEntityId; }
+
+    /**
      * 获取当前选中图标的显示标签。
      */
-    private static String getSelectedLabel() {
+    private static Component getSelectedLabel() {
         String iconId;
         if (selectedIndex == -1) {
             iconId = PointMarkerIcon.ICON_DOT_ID;
         } else if (selectedIndex >= 0 && selectedIndex < ICON_COUNT) {
             iconId = WHEEL_ICONS[selectedIndex];
         } else {
-            return "";
+            return Component.empty();
         }
-        // 去掉 "icon_" 前缀显示
-        return iconId.replace("icon_", "");
+        return Component.translatable("icon.airstrikepointers." + iconId);
     }
 
     // ===== 公共 API =====

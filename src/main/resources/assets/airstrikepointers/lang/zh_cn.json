@@ -24,5 +24,14 @@
   "message.airstrikepointers.cooldown_active": "冷却中",
   "message.airstrikepointers.command_marker_created": "已创建标记 '%s' 于 [%s, %s, %s]",
   "message.airstrikepointers.guidance_disabled": "已禁用 %s 个标记的制导",
-  "message.airstrikepointers.guidance_enabled": "已启用 %s 个标记的制导"
+  "message.airstrikepointers.guidance_enabled": "已启用 %s 个标记的制导",
+  "icon.airstrikepointers.icon_danger": "危险",
+  "icon.airstrikepointers.icon_caution": "注意",
+  "icon.airstrikepointers.icon_satisfied": "满意",
+  "icon.airstrikepointers.icon_like": "喜欢",
+  "icon.airstrikepointers.icon_attack": "攻击",
+  "icon.airstrikepointers.icon_defend": "防守",
+  "icon.airstrikepointers.icon_puzzled": "疑惑",
+  "icon.airstrikepointers.icon_refuse": "拒绝",
+  "icon.airstrikepointers.icon_dot": "点"
 }

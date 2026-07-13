@@ -24,5 +24,14 @@
   "message.airstrikepointers.cooldown_active": "Cooldown active",
   "message.airstrikepointers.command_marker_created": "Created marker '%s' at [%s, %s, %s]",
   "message.airstrikepointers.guidance_disabled": "Guidance disabled for %s marker(s)",
-  "message.airstrikepointers.guidance_enabled": "Guidance enabled for %s marker(s)"
+  "message.airstrikepointers.guidance_enabled": "Guidance enabled for %s marker(s)",
+  "icon.airstrikepointers.icon_danger": "Danger",
+  "icon.airstrikepointers.icon_caution": "Caution",
+  "icon.airstrikepointers.icon_satisfied": "Satisfied",
+  "icon.airstrikepointers.icon_like": "Like",
+  "icon.airstrikepointers.icon_attack": "Attack",
+  "icon.airstrikepointers.icon_defend": "Defend",
+  "icon.airstrikepointers.icon_puzzled": "Puzzled",
+  "icon.airstrikepointers.icon_refuse": "Refuse",
+  "icon.airstrikepointers.icon_dot": "Dot"
 }

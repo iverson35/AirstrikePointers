@@ -90,6 +90,12 @@ public class PocketLaserPointerItem extends Item {
 
         // 开始使用物品以检测长按/短按
         player.startUsingItem(usedHand);
+
+        // 客户端：预先捕获目标，以便后续长按轮盘使用
+        if (level.isClientSide) {
+            MarkerWheelOverlay.captureTarget(player);
+        }
+
         return InteractionResultHolder.consume(stack);
     }
 
@@ -254,46 +260,17 @@ public class PocketLaserPointerItem extends Item {
 
     /**
      * 客户端：轮盘模式下发送标记请求到服务端。
-     * 在客户端执行射线检测，将结果和选中的图标 ID 打包发送。
+     * 使用右键按下时预先捕获的目标，而非当前视角方向。
      */
     private void sendWheelMarker(Player player) {
-        Level level = player.level();
         String selectedIcon = MarkerWheelOverlay.getSelectedIcon();
 
-        Vec3 eyePos = player.getEyePosition(0.0f);
-        Vec3 lookVec = player.getViewVector(0.0f);
-        Vec3 endPos = eyePos.add(lookVec.x * 300.0, lookVec.y * 300.0, lookVec.z * 300.0);
+        Vec3 targetPos = MarkerWheelOverlay.getCapturedPos();
+        int targetType = MarkerWheelOverlay.getCapturedType();
+        String entityName = MarkerWheelOverlay.getCapturedEntityName();
+        UUID targetEntityId = MarkerWheelOverlay.getCapturedEntityId();
 
-        var entityHitResult = net.minecraft.world.entity.projectile.ProjectileUtil.getEntityHitResult(
-                level, player, eyePos, endPos,
-                player.getBoundingBox().expandTowards(lookVec.scale(300.0)).inflate(1.0),
-                entity -> !entity.isSpectator() && entity.isPickable()
-        );
-
-        Vec3 targetPos;
-        int targetType;
-        String entityName = "";
-        UUID targetEntityId = null;
-
-        if (entityHitResult != null) {
-            Entity hitEntity = entityHitResult.getEntity();
-            if (hitEntity instanceof PartEntity<?> partEntity) {
-                hitEntity = partEntity.getParent();
-            }
-            targetPos = entityHitResult.getLocation();
-            targetType = CreatePocketMarkerC2SPacket.TARGET_ENTITY;
-            entityName = hitEntity.getDisplayName().getString();
-            targetEntityId = hitEntity.getUUID();
-        } else {
-            BlockHitResult blockHitResult = (BlockHitResult) player.pick(300.0, 0.0f, false);
-            if (blockHitResult.getType() == HitResult.Type.BLOCK) {
-                targetPos = blockHitResult.getLocation();
-                targetType = CreatePocketMarkerC2SPacket.TARGET_BLOCK;
-            } else {
-                targetPos = endPos;
-                targetType = CreatePocketMarkerC2SPacket.TARGET_MISS;
-            }
-        }
+        if (targetPos == null) return;
 
         NetworkHandler.CHANNEL.send(
                 PacketDistributor.SERVER.noArg(),
