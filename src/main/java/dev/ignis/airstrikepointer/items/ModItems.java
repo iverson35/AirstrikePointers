@@ -19,6 +19,9 @@ public class ModItems {
     public static final RegistryObject<Item> LASER_POINTER = ITEMS.register("laser_pointer",
             () -> new LaserPointerItem(new Item.Properties().stacksTo(1)));
 
+    public static final RegistryObject<Item> POCKET_LASER_POINTER = ITEMS.register("pocket_laser_pointer",
+            () -> new PocketLaserPointerItem(new Item.Properties().stacksTo(1)));
+
     public static void register(IEventBus eventBus) {
         ITEMS.register(eventBus);
     }
@@ -27,6 +30,7 @@ public class ModItems {
     public static void onBuildCreativeModeTabContents(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.COMBAT) {
             event.accept(new ItemStack(LASER_POINTER.get()));
+            event.accept(new ItemStack(POCKET_LASER_POINTER.get()));
         }
     }
 }

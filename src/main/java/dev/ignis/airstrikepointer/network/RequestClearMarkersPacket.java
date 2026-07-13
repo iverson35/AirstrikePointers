@@ -31,6 +31,7 @@ public record RequestClearMarkersPacket() {
                 player.displayClientMessage(Component.translatable("message.airstrikepointers.markers_cleared").withStyle(ChatFormatting.GREEN), true);
                 // 清除冷却，让指示器立即可用
                 player.getCooldowns().removeCooldown(ModItems.LASER_POINTER.get());
+                player.getCooldowns().removeCooldown(ModItems.POCKET_LASER_POINTER.get());
             }
         });
         ctx.get().setPacketHandled(true);

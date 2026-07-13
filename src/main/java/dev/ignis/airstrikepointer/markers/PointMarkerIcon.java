@@ -22,6 +22,7 @@ public class PointMarkerIcon {
     public static final String ICON_PUZZLED_ID = "icon_puzzled";
     public static final String ICON_REFUSE_ID = "icon_refuse";
     public static final String ICON_SATISFIED_ID = "icon_satisfied";
+    public static final String ICON_DOT_ID = "icon_dot";
 
     private static final Map<String, ResourceLocation> ICONS = new LinkedHashMap<>();
 
@@ -46,6 +47,8 @@ public class PointMarkerIcon {
     public static final ResourceLocation ICON_REFUSE_TEXTURE = register(ICON_REFUSE_ID, "textures/marker/icon_refuse.png");
     @SuppressWarnings("removal")
     public static final ResourceLocation ICON_SATISFIED_TEXTURE = register(ICON_SATISFIED_ID, "textures/marker/icon_satisfied.png");
+    @SuppressWarnings("removal")
+    public static final ResourceLocation ICON_DOT_TEXTURE = register(ICON_DOT_ID, "textures/marker/icon_dot.png");
 
     /**
      * 注册一个图标。

@@ -423,6 +423,49 @@ public class MarkerStorage extends SavedData {
         return count;
     }
 
+    /**
+     * 清除指定玩家的所有无制导点标记（guidanceDisabled=true）。
+     * 用于袖珍激光笔标点前清理旧标记。
+     */
+    public void clearNonGuidedMarkersByOwner(UUID ownerId) {
+        List<UUID> removedIds = new ArrayList<>();
+        List<UUID> removedEntityIds = new ArrayList<>();
+
+        pointMarkers.values().removeIf(m -> {
+            if (m.getOwnerId().equals(ownerId) && m.isGuidanceDisabled()) {
+                removedIds.add(m.getMarkerId());
+                if (m.isTrackingEntity()) {
+                    removedEntityIds.add(m.getTargetEntityId());
+                }
+                decrementPlayerCount(ownerId);
+                return true;
+            }
+            return false;
+        });
+
+        if (!removedIds.isEmpty()) {
+            setDirty();
+            for (UUID markerId : removedIds) {
+                broadcastToAll(new RemoveMarkerPacket(markerId, false));
+            }
+
+            // 清理不再被追踪的实体的 PersistentData
+            MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
+            if (server != null && !removedEntityIds.isEmpty()) {
+                for (UUID entityId : removedEntityIds) {
+                    boolean stillTracked = pointMarkers.values().stream()
+                            .anyMatch(m -> m.isTrackingEntity() && m.getTargetEntityId().equals(entityId));
+                    if (!stillTracked) {
+                        var entity = server.overworld().getEntity(entityId);
+                        if (entity != null) {
+                            entity.getPersistentData().remove(TRACKED_TAG_NAME);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     public Collection<PathMarker> getPathMarkers() {
         return Collections.unmodifiableCollection(pathMarkers.values());
     }

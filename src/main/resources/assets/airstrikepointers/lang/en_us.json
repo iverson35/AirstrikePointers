@@ -1,5 +1,6 @@
 {
   "item.airstrikepointers.laser_pointer": "Laser Pointer",
+  "item.airstrikepointers.pocket_laser_pointer": "Pocket Laser Pointer",
   "mode.airstrikepointers.point": "Point Mode",
   "mode.airstrikepointers.path": "Path Mode",
   "gui.airstrikepointers.path_start": "Start Point",
@@ -7,6 +8,8 @@
   "gui.airstrikepointers.mark_end": "Mark End",
   "tooltip.airstrikepointers.mode": "Mode: %s",
   "tooltip.airstrikepointers.switch_mode": "Sneak+Right Click to switch mode",
+  "tooltip.airstrikepointers.pocket_short_press": "Right Click: mark with auto icon",
+  "tooltip.airstrikepointers.pocket_long_press": "Hold Right Click: (not implemented yet)",
   "tooltip.airstrikepointers.clear_markers": "Sneak+Left Click to clear all markers",
   "tooltip.airstrikepointers.cancel_mark": "Sneak+Release to cancel action",
   "message.airstrikepointers.mode_switched": "Mode switched to: %s",

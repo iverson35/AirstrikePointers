@@ -1,5 +1,6 @@
 {
   "item.airstrikepointers.laser_pointer": "镭射指示器",
+  "item.airstrikepointers.pocket_laser_pointer": "袖珍激光笔",
   "mode.airstrikepointers.point": "坐标点模式",
   "mode.airstrikepointers.path": "航向模式",
   "gui.airstrikepointers.path_start": "起始点",
@@ -7,6 +8,8 @@
   "gui.airstrikepointers.mark_end": "标记终点",
   "tooltip.airstrikepointers.mode": "模式: %s",
   "tooltip.airstrikepointers.switch_mode": "潜行+右键切换模式",
+  "tooltip.airstrikepointers.pocket_short_press": "右键：根据目标自动标记",
+  "tooltip.airstrikepointers.pocket_long_press": "长按右键：（暂未实现）",
   "tooltip.airstrikepointers.clear_markers": "潜行+左键清除所有标记",
   "tooltip.airstrikepointers.cancel_mark": "潜行+松开右键取消操作",
   "message.airstrikepointers.mode_switched": "模式切换为: %s",

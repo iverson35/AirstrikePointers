@@ -2,6 +2,7 @@ package dev.ignis.airstrikepointer;
 
 import dev.ignis.airstrikepointer.items.LaserPointerItem;
 import dev.ignis.airstrikepointer.items.ModItems;
+import dev.ignis.airstrikepointer.items.PocketLaserPointerItem;
 import dev.ignis.airstrikepointer.markers.MarkerStorage;
 import dev.ignis.airstrikepointer.network.NetworkHandler;
 import dev.ignis.airstrikepointer.network.RequestClearMarkersPacket;
@@ -49,7 +50,7 @@ public class ServerEvents {
         // 监听左键点击空气事件（客户端触发，需要发送给服务端）
         if (event.getEntity().isShiftKeyDown()) {
             ItemStack stack = event.getEntity().getMainHandItem();
-            if (stack.getItem() instanceof LaserPointerItem) {
+            if (stack.getItem() instanceof LaserPointerItem || stack.getItem() instanceof PocketLaserPointerItem) {
                 // 发送网络包到服务端请求清除标记
                 NetworkHandler.CHANNEL.send(PacketDistributor.SERVER.noArg(), new RequestClearMarkersPacket());
             }
@@ -60,7 +61,7 @@ public class ServerEvents {
     public static void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
         if (event.getEntity() instanceof ServerPlayer player && player.isShiftKeyDown()) {
             ItemStack stack = player.getMainHandItem();
-            if (stack.getItem() instanceof LaserPointerItem) {
+            if (stack.getItem() instanceof LaserPointerItem || stack.getItem() instanceof PocketLaserPointerItem) {
                 // 取消事件，阻止破坏方块
                 event.setCanceled(true);
                 // 清除标记
@@ -68,6 +69,7 @@ public class ServerEvents {
                 player.displayClientMessage(Component.translatable("message.airstrikepointers.markers_cleared").withStyle(ChatFormatting.GREEN), true);
                 // 清除冷却，让指示器立即可用
                 player.getCooldowns().removeCooldown(ModItems.LASER_POINTER.get());
+                player.getCooldowns().removeCooldown(ModItems.POCKET_LASER_POINTER.get());
             }
         }
     }
@@ -76,7 +78,7 @@ public class ServerEvents {
     public static void onEntityInteract(PlayerInteractEvent.EntityInteract event) {
         if (event.getEntity() instanceof ServerPlayer player && player.isShiftKeyDown()) {
             ItemStack stack = player.getMainHandItem();
-            if (stack.getItem() instanceof LaserPointerItem) {
+            if (stack.getItem() instanceof LaserPointerItem || stack.getItem() instanceof PocketLaserPointerItem) {
                 // 取消事件，阻止攻击实体
                 event.setCanceled(true);
                 // 清除标记
@@ -84,6 +86,7 @@ public class ServerEvents {
                 player.displayClientMessage(Component.translatable("message.airstrikepointers.markers_cleared").withStyle(ChatFormatting.GREEN), true);
                 // 清除冷却，让指示器立即可用
                 player.getCooldowns().removeCooldown(ModItems.LASER_POINTER.get());
+                player.getCooldowns().removeCooldown(ModItems.POCKET_LASER_POINTER.get());
             }
         }
     }
