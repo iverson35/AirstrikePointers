@@ -92,8 +92,9 @@ public class PocketLaserPointerItem extends Item {
         // 开始使用物品以检测长按/短按
         player.startUsingItem(usedHand);
 
-        // 客户端：预先捕获目标，以便后续长按轮盘使用
+        // 客户端：预先捕获目标和鼠标原点，以便后续长按轮盘使用
         if (level.isClientSide) {
+            MarkerWheelOverlay.captureOrigin();
             MarkerWheelOverlay.captureTarget(player);
         }
 

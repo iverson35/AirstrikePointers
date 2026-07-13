@@ -101,19 +101,12 @@ public class MarkerWheelOverlay {
         holdTicks = useDuration - timeLeft;
 
         if (holdTicks >= getWheelThresholdTicks()) {
-            if (!wheelActive) {
-                // 轮盘刚激活：捕获当前鼠标位置作为原点
-                wheelOriginX = mc.mouseHandler.xpos();
-                wheelOriginY = mc.mouseHandler.ypos();
-                originCaptured = true;
-            }
             wheelActive = true;
-            // 根据鼠标相对于原点的偏移量更新选中项
+            // 根据鼠标相对于原点的偏移量更新选中项（原点在 use() 时已捕获）
             updateSelection(mc);
         } else {
             wheelActive = false;
             selectedIndex = -1;
-            originCaptured = false;
         }
     }
 
@@ -228,6 +221,18 @@ public class MarkerWheelOverlay {
         gui.blit(texture, x, y, 0, 0, 0, size, size, size, size);
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
         RenderSystem.disableBlend();
+    }
+
+    /**
+     * 右键按下时捕获鼠标原点，用于后续轮盘的增量选择。
+     * 在 use() 中由 PocketLaserPointerItem 调用，早于轮盘激活。
+     * 这样玩家可以在轮盘出现前就开始移动鼠标，松手即选。
+     */
+    public static void captureOrigin() {
+        Minecraft mc = Minecraft.getInstance();
+        wheelOriginX = mc.mouseHandler.xpos();
+        wheelOriginY = mc.mouseHandler.ypos();
+        originCaptured = true;
     }
 
     /**
