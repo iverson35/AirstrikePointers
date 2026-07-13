@@ -103,8 +103,6 @@ public class MarkerStorage extends SavedData {
         }
 
         broadcastToAll(new CreatePointMarkerPacket(markerId, ownerId, position, color, teamName, lifetimeTicks, targetType, entityName, targetEntityId, itemName, customTitle, customDescription, marker.getIconId(), guidanceDisabled));
-        String displayName = customTitle != null ? customTitle : playerName;
-        broadcastMarkerNotification(marker, displayName, targetType, entityName);
         return marker;
     }
 
@@ -138,7 +136,6 @@ public class MarkerStorage extends SavedData {
 
             broadcastToAll(new CreatePathMarkerPacket(markerId, marker.getOwnerId(), marker.getStartPos(), endPos,
                     marker.getHeight(), marker.getColor(), marker.getTeamName(), marker.getRemainingTicks(), false, angle, marker.getItemName()));
-            broadcastPathNotification(marker, playerName, angle);
         }
     }
 
@@ -318,53 +315,6 @@ public class MarkerStorage extends SavedData {
         }
     }
 
-    private void broadcastMarkerNotification(PointMarker marker, String playerName, int targetType, String entityName) {
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-        if (server == null) return;
-
-        // 构建颜色代码
-        String hexColor = String.format("#%06X", marker.getColor() & 0xFFFFFF);
-        String teamPrefix = getTeamDisplayName(server, marker.getTeamName());
-
-        // 构建悬浮提示内容：先输出位置，再输出实体（如果是实体标记）
-        Vec3 pos = marker.getPosition();
-        String posText = String.format("[%.1f, %.1f, %.1f]", pos.x, pos.y, pos.z);
-        String hoverText;
-        if (targetType == CreatePointMarkerPacket.TARGET_ENTITY && !entityName.isEmpty()) {
-            hoverText = posText + " " + Component.translatable("message.airstrikepointers.entity_target", entityName).getString();
-        } else {
-            hoverText = posText;
-        }
-
-        // 发送给所有玩家
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            if (shouldPlayerSeeMarker(player, marker.getOwnerId(), marker.getTeamName())) {
-                sendMarkerMessage(player, hexColor, teamPrefix, playerName, hoverText);
-            }
-        }
-    }
-
-    private void broadcastPathNotification(PathMarker marker, String playerName, float headingAngle) {
-        MinecraftServer server = ServerLifecycleHooks.getCurrentServer();
-        if (server == null) return;
-
-        String hexColor = String.format("#%06X", marker.getColor() & 0xFFFFFF);
-        String teamPrefix = getTeamDisplayName(server, marker.getTeamName());
-
-        Vec3 start = marker.getStartPos();
-        Vec3 end = marker.getEndPos();
-        String hoverText = Component.translatable("message.airstrikepointers.path_info",
-                String.format("%.1f", start.x), String.format("%.1f", start.y), String.format("%.1f", start.z),
-                String.format("%.1f", end.x), String.format("%.1f", end.y), String.format("%.1f", end.z),
-                String.format("%.0f", headingAngle)).getString();
-
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            if (shouldPlayerSeeMarker(player, marker.getOwnerId(), marker.getTeamName())) {
-                sendMarkerMessage(player, hexColor, teamPrefix, playerName, hoverText);
-            }
-        }
-    }
-
     private String getTeamDisplayName(MinecraftServer server, String teamName) {
         if (teamName == null || teamName.isEmpty()) {
             return "";
@@ -389,20 +339,6 @@ public class MarkerStorage extends SavedData {
         }
 
         return localTeam.getName().equals(markerTeamName);
-    }
-
-    private void sendMarkerMessage(ServerPlayer player, String hexColor, String teamPrefix, String playerName, String hoverText) {
-        // 使用原始JSON格式发送带悬浮提示的消息
-        // 格式: [队名]玩家名 标记了一个位置
-        // 悬浮提示放在队名+玩家名组合上
-        // teamPrefix 已经包含方括号，如 "[TeamName]"
-        String fullName = teamPrefix.isEmpty() ? playerName : teamPrefix + " " + playerName;
-
-        String markerText = Component.translatable("message.airstrikepointers.marker_notification").getString();
-        String message = String.format("[{\"text\":\"%s\",\"color\":\"%s\",\"hoverEvent\":{\"action\":\"show_text\",\"contents\":\"%s\"}},{\"text\":\" %s\",\"color\":\"white\"}]",
-                fullName.replace("\"", "\\\""), hexColor, hoverText.replace("\"", "\\\""), markerText.replace("\"", "\\\""));
-
-        player.sendSystemMessage(net.minecraft.network.chat.Component.Serializer.fromJson(message));
     }
 
     public Collection<PointMarker> getPointMarkers() {
