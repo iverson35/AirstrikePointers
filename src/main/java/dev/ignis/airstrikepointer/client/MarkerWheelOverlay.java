@@ -205,28 +205,11 @@ public class MarkerWheelOverlay {
             }
         }
 
-        // 绘制中央 dot
-        boolean centerSelected = (selectedIndex == -1);
-        int dotSize = centerSelected ? ICON_SIZE_SELECTED : ICON_SIZE;
-        float dotAlpha = centerSelected ? 1.0f : 0.85f;
-        ResourceLocation dotTexture = PointMarkerIcon.getTexture(PointMarkerIcon.ICON_DOT_ID);
-        renderIcon(gui, dotTexture, centerX - dotSize / 2, centerY - dotSize / 2, dotSize, dotAlpha);
-
-        // 中央选中高亮边框
-        if (centerSelected) {
-            int cx = centerX, cy = centerY;
-            int hs = dotSize / 2;
-            gui.fill(cx - hs - 2, cy - hs - 2, cx + hs + 2, cy - hs, 0xFFFFFFFF);
-            gui.fill(cx - hs - 2, cy + hs, cx + hs + 2, cy + hs + 2, 0xFFFFFFFF);
-            gui.fill(cx - hs - 2, cy - hs, cx - hs, cy + hs, 0xFFFFFFFF);
-            gui.fill(cx + hs, cy - hs, cx + hs + 2, cy + hs, 0xFFFFFFFF);
-        }
-
         // 绘制选中的图标名称标签
         Component labelText = getSelectedLabel();
         if (!labelText.getString().isEmpty()) {
             int labelWidth = mc.font.width(labelText);
-            gui.drawCenteredString(mc.font, labelText, centerX, centerY + dotSize / 2 + 14, 0xFFFFFF);
+            gui.drawCenteredString(mc.font, labelText, centerX, centerY + 14, 0xFFFFFF);
         }
 
         pose.popPose();
