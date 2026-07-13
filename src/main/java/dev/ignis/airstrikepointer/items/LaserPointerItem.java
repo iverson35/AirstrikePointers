@@ -192,7 +192,7 @@ public class LaserPointerItem extends Item {
         String itemName = stack.hasCustomHoverName() ? stack.getDisplayName().getString() : null;
 
         if (mode == Mode.POINT) {
-            var marker = storage.createPointMarker(player.getUUID(), targetPos, color, teamName, targetType, entityName, targetEntityId, player.getDisplayName().getString(), itemName);
+            var marker = storage.createPointMarker(player.getUUID(), targetPos, color, teamName, targetType, entityName, targetEntityId, player.getDisplayName().getString(), itemName, null, null);
             if (marker != null) {
                 player.displayClientMessage(Component.translatable("message.airstrikepointers.point_marked").withStyle(ChatFormatting.GREEN), true);
             } else {

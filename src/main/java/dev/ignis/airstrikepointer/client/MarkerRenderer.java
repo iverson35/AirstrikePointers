@@ -295,15 +295,20 @@ public class MarkerRenderer {
             }
 
             // 下方：标记者名字（稍小）
-            String ownerName = null;
-            if (mc.getConnection() != null) {
-                var playerInfo = mc.getConnection().getPlayerInfo(marker.ownerId);
-                if (playerInfo != null) {
-                    ownerName = playerInfo.getProfile().getName();
+            String ownerName;
+            if (marker.customTitle != null) {
+                ownerName = marker.customTitle;
+            } else {
+                ownerName = null;
+                if (mc.getConnection() != null) {
+                    var playerInfo = mc.getConnection().getPlayerInfo(marker.ownerId);
+                    if (playerInfo != null) {
+                        ownerName = playerInfo.getProfile().getName();
+                    }
                 }
-            }
-            if (ownerName == null) {
-                ownerName = marker.ownerId.toString().substring(0, 8);
+                if (ownerName == null) {
+                    ownerName = marker.ownerId.toString().substring(0, 8);
+                }
             }
 
             int ownerWidth = font.width(ownerName);
@@ -311,7 +316,10 @@ public class MarkerRenderer {
             gui.pose().translate(x, y + 8 + 4, 0);
             gui.pose().scale(0.75f, 0.75f, 1f);
             gui.drawString(font, ownerName, -ownerWidth / 2, 0, 0xFFAAAAAA);
-            if (marker.itemName != null && !marker.itemName.isEmpty()) {
+            if (marker.customDescription != null && !marker.customDescription.isEmpty()) {
+                int itemWidth = font.width(marker.customDescription);
+                gui.drawString(font, marker.customDescription, -itemWidth / 2, font.lineHeight + 2, 0xFFFFFF55);
+            } else if (marker.itemName != null && !marker.itemName.isEmpty()) {
                 int itemWidth = font.width(marker.itemName);
                 gui.drawString(font, marker.itemName, -itemWidth / 2, font.lineHeight + 2, 0xFFFFFF55);
             }
@@ -654,6 +662,8 @@ public class MarkerRenderer {
         boolean entityLost;
         final String entityName;
         final String itemName;
+        final String customTitle;
+        final String customDescription;
 
         ClientPointMarker(CreatePointMarkerPacket packet) {
             this.markerId = packet.markerId();
@@ -669,6 +679,8 @@ public class MarkerRenderer {
             this.entityLost = false;
             this.entityName = packet.entityName();
             this.itemName = packet.itemName();
+            this.customTitle = packet.customTitle();
+            this.customDescription = packet.customDescription();
         }
 
         void tick() {
