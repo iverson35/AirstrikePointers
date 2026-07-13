@@ -59,7 +59,7 @@ public class PocketLaserPointerItem extends Item {
 
     @Override
     public UseAnim getUseAnimation(ItemStack stack) {
-        return UseAnim.NONE;
+        return UseAnim.SPYGLASS;
     }
 
     @Override

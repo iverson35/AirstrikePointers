@@ -17,8 +17,9 @@ public class LaserPointerArmPoseHandler {
     public static void onRenderLivingPre(RenderLivingEvent.Pre<?, ?> event) {
         if (!(event.getEntity() instanceof Player player)) return;
         
-        // 检查玩家是否正在使用激光指示器
-        if (!player.isUsingItem() || !player.getUseItem().is(ModItems.LASER_POINTER.get())) return;
+        // 检查玩家是否正在使用激光指示器或袖珍激光笔
+        var useItem = player.getUseItem();
+        if (!player.isUsingItem() || !(useItem.is(ModItems.LASER_POINTER.get()) || useItem.is(ModItems.POCKET_LASER_POINTER.get()))) return;
         
         // 获取模型
         if (event.getRenderer().getModel() instanceof HumanoidModel<?> model) {
