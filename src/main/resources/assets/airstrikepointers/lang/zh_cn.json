@@ -18,5 +18,6 @@
   "message.airstrikepointers.marker_notification": "标记了一个位置",
   "message.airstrikepointers.entity_target": "目标: %s",
   "message.airstrikepointers.path_info": "[%s, %s, %s] -> [%s, %s, %s] 航向%s°",
-  "message.airstrikepointers.cooldown_active": "冷却中"
+  "message.airstrikepointers.cooldown_active": "冷却中",
+  "message.airstrikepointers.command_marker_created": "已创建标记 '%s' 于 [%s, %s, %s]"
 }

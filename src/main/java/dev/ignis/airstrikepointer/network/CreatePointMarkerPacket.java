@@ -15,10 +15,12 @@ public record CreatePointMarkerPacket(
         int color,
         String teamName,
         int lifetimeTicks,
-        int targetType, // 0=miss, 1=block, 2=entity
-        String entityName, // 当targetType=2时的实体显示名称
-        UUID targetEntityId, // 当targetType=2时的实体UUID
-        String itemName // 空袭指示器的自定义命名，null表示未命名
+        int targetType,
+        String entityName,
+        UUID targetEntityId,
+        String itemName,
+        String customTitle,
+        String customDescription
 ) {
     public static final int TARGET_MISS = 0;
     public static final int TARGET_BLOCK = 1;
@@ -40,6 +42,8 @@ public record CreatePointMarkerPacket(
             buf.writeUUID(targetEntityId);
         }
         buf.writeUtf(itemName != null ? itemName : "");
+        buf.writeUtf(customTitle != null ? customTitle : "");
+        buf.writeUtf(customDescription != null ? customDescription : "");
     }
 
     public static CreatePointMarkerPacket decode(FriendlyByteBuf buf) {
@@ -54,7 +58,11 @@ public record CreatePointMarkerPacket(
         UUID targetEntityId = buf.readBoolean() ? buf.readUUID() : null;
         String itemName = buf.readUtf();
         if (itemName.isEmpty()) itemName = null;
-        return new CreatePointMarkerPacket(markerId, ownerId, position, color, teamName, lifetimeTicks, targetType, entityName, targetEntityId, itemName);
+        String customTitle = buf.readUtf();
+        if (customTitle.isEmpty()) customTitle = null;
+        String customDescription = buf.readUtf();
+        if (customDescription.isEmpty()) customDescription = null;
+        return new CreatePointMarkerPacket(markerId, ownerId, position, color, teamName, lifetimeTicks, targetType, entityName, targetEntityId, itemName, customTitle, customDescription);
     }
 
     public void handle(Supplier<NetworkEvent.Context> ctx) {
