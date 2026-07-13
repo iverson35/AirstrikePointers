@@ -20,6 +20,8 @@ import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
+import java.util.UUID;
+
 @Mod.EventBusSubscriber(modid = AirstrikePointers.MODID)
 public class MarkerCommands {
 
@@ -99,6 +101,14 @@ public class MarkerCommands {
                         )
                     )
                 )
+                .then(Commands.literal("guidance")
+                    .then(Commands.literal("disable")
+                        .executes(context -> executeGuidance(context.getSource(), true))
+                    )
+                    .then(Commands.literal("enable")
+                        .executes(context -> executeGuidance(context.getSource(), false))
+                    )
+                )
         );
     }
 
@@ -117,7 +127,7 @@ public class MarkerCommands {
         var marker = storage.createPointMarker(MarkerStorage.COMMAND_OWNER_ID, position, color, "",
                 CreatePointMarkerPacket.TARGET_BLOCK, "", null,
                 title, description, title, description,
-                iconId);
+                iconId, false);
 
         if (marker != null) {
             source.sendSuccess(() -> Component.translatable("message.airstrikepointers.command_marker_created",
@@ -128,6 +138,26 @@ public class MarkerCommands {
         }
 
         return 1;
+    }
+
+    private static int executeGuidance(CommandSourceStack source, boolean disabled) {
+        ServerLevel level = source.getLevel();
+        MarkerStorage storage = MarkerStorage.get(level);
+
+        UUID ownerId;
+        if (source.getEntity() instanceof Player player) {
+            ownerId = player.getUUID();
+        } else {
+            ownerId = MarkerStorage.COMMAND_OWNER_ID;
+        }
+
+        int count = storage.setGuidanceDisabledForOwner(ownerId, disabled);
+
+        String statusKey = disabled ? "message.airstrikepointers.guidance_disabled" : "message.airstrikepointers.guidance_enabled";
+        source.sendSuccess(() -> Component.translatable(statusKey, count)
+                .withStyle(disabled ? ChatFormatting.RED : ChatFormatting.GREEN), true);
+
+        return count;
     }
 
     private static int parseColor(String colorStr, CommandSourceStack source) {

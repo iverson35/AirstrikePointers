@@ -23,7 +23,8 @@ public record SyncMarkersPacket(
             String entityName,
             boolean entityLost,
             String customTitle,
-            String customDescription
+            String customDescription,
+            boolean guidanceDisabled
     ) {}
 
     public record PathMarkerData(
@@ -53,6 +54,7 @@ public record SyncMarkersPacket(
             buf.writeUtf(data.customTitle != null ? data.customTitle : "");
             buf.writeUtf(data.customDescription != null ? data.customDescription : "");
             buf.writeUtf(data.iconId != null ? data.iconId : "");
+            buf.writeBoolean(data.guidanceDisabled);
         }
 
         buf.writeInt(pathMarkers.size());
@@ -98,7 +100,8 @@ public record SyncMarkersPacket(
             if (customDescription.isEmpty()) customDescription = null;
             String iconId = buf.readUtf();
             if (iconId.isEmpty()) iconId = null;
-            points.add(new PointMarkerData(markerId, ownerId, position, color, teamName, remainingTicks, targetEntityId, iconId, itemName, entityName, entityLost, customTitle, customDescription));
+            boolean guidanceDisabled = buf.readBoolean();
+            points.add(new PointMarkerData(markerId, ownerId, position, color, teamName, remainingTicks, targetEntityId, iconId, itemName, entityName, entityLost, customTitle, customDescription, guidanceDisabled));
         }
 
         int pathCount = buf.readInt();
@@ -135,7 +138,7 @@ public record SyncMarkersPacket(
                         data.markerId, data.ownerId, data.position,
                         data.color, data.teamName, data.remainingTicks,
                         targetType, data.entityName != null ? data.entityName : "", data.targetEntityId, data.itemName,
-                        data.customTitle, data.customDescription, data.iconId
+                        data.customTitle, data.customDescription, data.iconId, data.guidanceDisabled
                 ));
                 if (data.entityLost) {
                     MarkerRenderer.updateEntityLost(new UpdateEntityLostPacket(data.markerId, true));

@@ -79,14 +79,14 @@ public class MarkerStorage extends SavedData {
         return storage;
     }
 
-    public PointMarker createPointMarker(UUID ownerId, Vec3 position, int color, String teamName, int targetType, String entityName, UUID targetEntityId, String playerName, String itemName, String customTitle, String customDescription, String iconId) {
+    public PointMarker createPointMarker(UUID ownerId, Vec3 position, int color, String teamName, int targetType, String entityName, UUID targetEntityId, String playerName, String itemName, String customTitle, String customDescription, String iconId, boolean guidanceDisabled) {
         if (!ownerId.equals(COMMAND_OWNER_ID) && getPlayerMarkerCount(ownerId) >= Config.MAX_MARKERS_PER_PLAYER.get()) {
             return null;
         }
 
         UUID markerId = UUID.randomUUID();
         int lifetimeTicks = Config.MARKER_LIFETIME_SECONDS.get() * 20;
-        PointMarker marker = new PointMarker(markerId, ownerId, position, color, teamName, lifetimeTicks, targetEntityId, iconId, itemName, entityName, customTitle, customDescription);
+        PointMarker marker = new PointMarker(markerId, ownerId, position, color, teamName, lifetimeTicks, targetEntityId, iconId, itemName, entityName, customTitle, customDescription, guidanceDisabled);
         pointMarkers.put(markerId, marker);
         if (!ownerId.equals(COMMAND_OWNER_ID)) {
             incrementPlayerCount(ownerId);
@@ -102,7 +102,7 @@ public class MarkerStorage extends SavedData {
             }
         }
 
-        broadcastToAll(new CreatePointMarkerPacket(markerId, ownerId, position, color, teamName, lifetimeTicks, targetType, entityName, targetEntityId, itemName, customTitle, customDescription, marker.getIconId()));
+        broadcastToAll(new CreatePointMarkerPacket(markerId, ownerId, position, color, teamName, lifetimeTicks, targetType, entityName, targetEntityId, itemName, customTitle, customDescription, marker.getIconId(), guidanceDisabled));
         String displayName = customTitle != null ? customTitle : playerName;
         broadcastMarkerNotification(marker, displayName, targetType, entityName);
         return marker;
@@ -275,7 +275,8 @@ public class MarkerStorage extends SavedData {
                     marker.getColor(), marker.getTeamName(), marker.getRemainingTicks(),
                     marker.getTargetEntityId(), marker.getIconId(), marker.getItemName(),
                     marker.getEntityName(), marker.isEntityLost(),
-                    marker.getCustomTitle(), marker.getCustomDescription()
+                    marker.getCustomTitle(), marker.getCustomDescription(),
+                    marker.isGuidanceDisabled()
             ));
         }
 
@@ -406,6 +407,20 @@ public class MarkerStorage extends SavedData {
 
     public Collection<PointMarker> getPointMarkers() {
         return Collections.unmodifiableCollection(pointMarkers.values());
+    }
+
+    public int setGuidanceDisabledForOwner(UUID ownerId, boolean disabled) {
+        int count = 0;
+        for (PointMarker marker : pointMarkers.values()) {
+            if (marker.getOwnerId().equals(ownerId)) {
+                marker.setGuidanceDisabled(disabled);
+                count++;
+            }
+        }
+        if (count > 0) {
+            setDirty();
+        }
+        return count;
     }
 
     public Collection<PathMarker> getPathMarkers() {

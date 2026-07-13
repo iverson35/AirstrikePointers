@@ -19,5 +19,7 @@
   "message.airstrikepointers.entity_target": "目标: %s",
   "message.airstrikepointers.path_info": "[%s, %s, %s] -> [%s, %s, %s] 航向%s°",
   "message.airstrikepointers.cooldown_active": "冷却中",
-  "message.airstrikepointers.command_marker_created": "已创建标记 '%s' 于 [%s, %s, %s]"
+  "message.airstrikepointers.command_marker_created": "已创建标记 '%s' 于 [%s, %s, %s]",
+  "message.airstrikepointers.guidance_disabled": "已禁用 %s 个标记的制导",
+  "message.airstrikepointers.guidance_enabled": "已启用 %s 个标记的制导"
 }
